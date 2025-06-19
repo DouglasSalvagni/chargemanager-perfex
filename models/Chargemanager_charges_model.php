@@ -38,16 +38,157 @@ class Chargemanager_charges_model extends App_Model
     }
 
     /**
-     * Update a charge
-     * @param int $id
+     * Update a charge with validations and hooks
+     * @param int $charge_id
      * @param array $data
-     * @return bool
+     * @param array $options
+     * @return array|bool - Returns array with detailed result or bool for simple updates
      */
-    public function update($id, $data)
+    public function update($charge_id, $data, $options = [])
     {
-        $data['updated_at'] = date('Y-m-d H:i:s');
-        $this->db->where('id', $id);
-        return $this->db->update(db_prefix() . 'chargemanager_charges', $data);
+        // If options are provided or data contains complex fields, use full update logic
+        $complex_fields = ['value', 'due_date', 'billing_type', 'description', 'client_id', 'status'];
+        $is_complex_update = !empty($options) || array_intersect(array_keys($data), $complex_fields);
+        
+        // Simple update for internal use (backward compatibility)
+        if (!$is_complex_update) {
+            $data['updated_at'] = date('Y-m-d H:i:s');
+            $this->db->where('id', $charge_id);
+            return $this->db->update(db_prefix() . 'chargemanager_charges', $data);
+        }
+
+        // Complex update with validations and hooks
+        try {
+            // Get current charge data
+            $current_charge = $this->get($charge_id);
+            
+            if (!$current_charge) {
+                throw new Exception('Charge not found: ' . $charge_id);
+            }
+
+            // Check if charge can be edited based on status
+            if (in_array($current_charge->status, ['paid', 'cancelled'])) {
+                throw new Exception('Cannot edit charge with status: ' . $current_charge->status);
+            }
+
+            // Validate required fields if provided
+            $allowed_fields = [
+                'value', 'due_date', 'billing_type', 'description', 
+                'client_id', 'status', 'gateway_charge_id'
+            ];
+
+            $update_data = [];
+            foreach ($data as $field => $value) {
+                if (in_array($field, $allowed_fields)) {
+                    $update_data[$field] = $value;
+                }
+            }
+
+            // Validate specific fields
+            if (isset($update_data['value'])) {
+                if (!is_numeric($update_data['value']) || $update_data['value'] <= 0) {
+                    throw new Exception('Invalid charge value');
+                }
+                $update_data['value'] = floatval($update_data['value']);
+            }
+
+            if (isset($update_data['due_date'])) {
+                if (!strtotime($update_data['due_date'])) {
+                    throw new Exception('Invalid due date format');
+                }
+                // Don't allow setting due date in the past unless explicitly allowed
+                if (!($options['allow_past_due_date'] ?? false) && strtotime($update_data['due_date']) < strtotime('today')) {
+                    throw new Exception('Due date cannot be in the past');
+                }
+            }
+
+            if (isset($update_data['billing_type'])) {
+                $valid_types = ['BOLETO', 'PIX', 'CREDIT_CARD'];
+                if (!in_array($update_data['billing_type'], $valid_types)) {
+                    throw new Exception('Invalid billing type');
+                }
+            }
+
+            // Hook: Before charge edit
+            if (function_exists('hooks')) {
+                $hook_data = [
+                    'charge_id' => $charge_id,
+                    'current_data' => $current_charge,
+                    'update_data' => $update_data,
+                    'options' => $options
+                ];
+                hooks()->do_action('before_chargemanager_charge_edit', $hook_data);
+                
+                // Allow hooks to modify update data
+                $update_data = hooks()->apply_filters('chargemanager_charge_edit_data', $update_data, $current_charge);
+            }
+
+            // Perform the database update
+            $update_data['updated_at'] = date('Y-m-d H:i:s');
+            $this->db->where('id', $charge_id);
+            $updated = $this->db->update(db_prefix() . 'chargemanager_charges', $update_data);
+
+            if (!$updated) {
+                throw new Exception('Failed to update charge in database');
+            }
+
+            // Get updated charge data
+            $updated_charge = $this->get($charge_id);
+
+            // Update related invoice if exists and if relevant fields changed
+            $invoice_update_needed = false;
+            $invoice_affecting_fields = ['value', 'due_date', 'description', 'billing_type'];
+            
+            foreach ($invoice_affecting_fields as $field) {
+                if (isset($update_data[$field]) && $current_charge->$field != $updated_charge->$field) {
+                    $invoice_update_needed = true;
+                    break;
+                }
+            }
+
+            $invoice_update_result = null;
+            if ($invoice_update_needed && !empty($updated_charge->perfex_invoice_id)) {
+                $invoice_update_result = $this->update_related_invoice($charge_id, $updated_charge, $current_charge);
+            }
+
+            // Log activity
+            log_activity('ChargeManager: Charge #' . $charge_id . ' updated successfully');
+
+            // Hook: After charge edit
+            if (function_exists('hooks')) {
+                $hook_data = [
+                    'charge_id' => $charge_id,
+                    'previous_data' => $current_charge,
+                    'current_data' => $updated_charge,
+                    'updated_fields' => array_keys($update_data),
+                    'invoice_updated' => $invoice_update_result !== null,
+                    'invoice_update_result' => $invoice_update_result
+                ];
+                hooks()->do_action('after_chargemanager_charge_edit', $hook_data);
+            }
+
+            // Update billing group status if applicable
+            if (!empty($updated_charge->billing_group_id)) {
+                $this->load->model('chargemanager_billing_groups_model');
+                $this->chargemanager_billing_groups_model->refresh_status($updated_charge->billing_group_id);
+            }
+
+            return [
+                'success' => true,
+                'message' => 'Charge updated successfully',
+                'charge_id' => $charge_id,
+                'updated_fields' => array_keys($update_data),
+                'invoice_updated' => $invoice_update_result !== null,
+                'invoice_update_result' => $invoice_update_result
+            ];
+
+        } catch (Exception $e) {
+            log_activity('ChargeManager Error in update: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => $e->getMessage()
+            ];
+        }
     }
 
     /**
@@ -571,6 +712,115 @@ class Chargemanager_charges_model extends App_Model
             return [
                 'success' => false,
                 'message' => $e->getMessage()
+            ];
+        }
+    }
+
+
+
+    /**
+     * Update related invoice when charge is edited
+     * @param int $charge_id
+     * @param object $updated_charge
+     * @param object $previous_charge
+     * @return array|null
+     */
+    private function update_related_invoice($charge_id, $updated_charge, $previous_charge)
+    {
+        try {
+            if (empty($updated_charge->perfex_invoice_id)) {
+                return null;
+            }
+
+            // Load required models
+            $this->load->model('invoices_model');
+            $this->load->model('clients_model');
+
+            // Get current invoice
+            $invoice = $this->invoices_model->get($updated_charge->perfex_invoice_id);
+            if (!$invoice) {
+                throw new Exception('Related invoice not found: ' . $updated_charge->perfex_invoice_id);
+            }
+
+            // Check if invoice can be updated (not paid)
+            if ($invoice->status == 2) { // STATUS_PAID
+                return [
+                    'success' => false,
+                    'message' => 'Cannot update paid invoice'
+                ];
+            }
+
+            // Prepare invoice update data
+            $invoice_update_data = [];
+
+            // Update due date if changed
+            if ($updated_charge->due_date != $previous_charge->due_date) {
+                $invoice_update_data['duedate'] = $updated_charge->due_date;
+            }
+
+            // Update amounts if value changed
+            if ($updated_charge->value != $previous_charge->value) {
+                $new_value = floatval($updated_charge->value);
+                $invoice_update_data['subtotal'] = $new_value;
+                $invoice_update_data['total'] = $new_value;
+            }
+
+            // Update invoice items if description or value changed
+            $items_update_needed = (
+                $updated_charge->value != $previous_charge->value ||
+                $updated_charge->billing_type != $previous_charge->billing_type ||
+                $updated_charge->due_date != $previous_charge->due_date
+            );
+
+            if ($items_update_needed) {
+                // Get current invoice items
+                $this->db->where('rel_id', $updated_charge->perfex_invoice_id);
+                $this->db->where('rel_type', 'invoice');
+                $current_items = $this->db->get(db_prefix() . 'itemable')->result();
+
+                if (!empty($current_items)) {
+                    // Update the first item (should be the charge item)
+                    $item = $current_items[0];
+                    
+                    $new_description = sprintf('Cobrança %s - Vencimento: %s', 
+                        $updated_charge->billing_type, 
+                        date('d/m/Y', strtotime($updated_charge->due_date))
+                    );
+
+                    $item_update_data = [
+                        'description' => $new_description,
+                        'rate' => floatval($updated_charge->value),
+                        'qty' => 1
+                    ];
+
+                    $this->db->where('id', $item->id);
+                    $this->db->update(db_prefix() . 'itemable', $item_update_data);
+                }
+            }
+
+            // Update invoice if there's data to update
+            if (!empty($invoice_update_data)) {
+                $updated = $this->invoices_model->update($invoice_update_data, $updated_charge->perfex_invoice_id);
+                
+                if (!$updated) {
+                    throw new Exception('Failed to update related invoice');
+                }
+            }
+
+            log_activity('ChargeManager: Invoice #' . $updated_charge->perfex_invoice_id . ' updated due to charge #' . $charge_id . ' edit');
+
+            return [
+                'success' => true,
+                'message' => 'Related invoice updated successfully',
+                'invoice_id' => $updated_charge->perfex_invoice_id,
+                'updated_fields' => array_keys($invoice_update_data)
+            ];
+
+        } catch (Exception $e) {
+            log_activity('ChargeManager Error updating related invoice: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Failed to update related invoice: ' . $e->getMessage()
             ];
         }
     }

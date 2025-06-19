@@ -1,0 +1,182 @@
+<?php
+
+defined('BASEPATH') or exit('No direct script access allowed');
+
+/**
+ * ChargeManager Webhook Helper Functions
+ * Funções utilitárias para processamento de webhooks
+ */
+
+if (!function_exists('chargemanager_validate_webhook_signature')) {
+    /**
+     * Validate webhook signature
+     * @param string $payload
+     * @param string $signature
+     * @param string $secret
+     * @return bool
+     */
+    function chargemanager_validate_webhook_signature($payload, $signature, $secret)
+    {
+        if (empty($payload) || empty($signature) || empty($secret)) {
+            return false;
+        }
+
+        $expected_signature = hash_hmac('sha256', $payload, $secret);
+        return hash_equals($expected_signature, $signature);
+    }
+}
+
+if (!function_exists('chargemanager_parse_webhook_event')) {
+    /**
+     * Parse webhook event type
+     * @param array $payload
+     * @return string
+     */
+    function chargemanager_parse_webhook_event($payload)
+    {
+        return $payload['event'] ?? 'unknown';
+    }
+}
+
+if (!function_exists('chargemanager_extract_payment_data')) {
+    /**
+     * Extract payment data from webhook payload
+     * @param array $payload
+     * @return array
+     */
+    function chargemanager_extract_payment_data($payload)
+    {
+        return $payload['payment'] ?? [];
+    }
+}
+
+if (!function_exists('chargemanager_get_charge_id_from_payload')) {
+    /**
+     * Get charge ID from webhook payload
+     * @param array $payload
+     * @return string|null
+     */
+    function chargemanager_get_charge_id_from_payload($payload)
+    {
+        $payment_data = chargemanager_extract_payment_data($payload);
+        return $payment_data['id'] ?? null;
+    }
+}
+
+if (!function_exists('chargemanager_map_asaas_status_to_internal')) {
+    /**
+     * Map ASAAS status to internal status
+     * @param string $asaas_status
+     * @param string $event_type
+     * @return string
+     */
+    function chargemanager_map_asaas_status_to_internal($asaas_status, $event_type)
+    {
+        switch ($event_type) {
+            case 'PAYMENT_RECEIVED':
+            case 'PAYMENT_CONFIRMED':
+                return 'paid';
+                
+            case 'PAYMENT_OVERDUE':
+                return 'overdue';
+                
+            case 'PAYMENT_DELETED':
+                return 'cancelled';
+                
+            default:
+                // Map ASAAS status directly
+                switch (strtoupper($asaas_status)) {
+                    case 'PENDING':
+                        return 'pending';
+                    case 'RECEIVED':
+                        return 'paid';
+                    case 'OVERDUE':
+                        return 'overdue';
+                    case 'CANCELLED':
+                        return 'cancelled';
+                    default:
+                        return 'pending';
+                }
+        }
+    }
+}
+
+if (!function_exists('chargemanager_log_webhook_processing')) {
+    /**
+     * Log webhook processing activity
+     * @param string $event_type
+     * @param string $charge_id
+     * @param string $status
+     * @param string $message
+     */
+    function chargemanager_log_webhook_processing($event_type, $charge_id, $status, $message = '')
+    {
+        $log_message = "Webhook {$event_type} processed for charge {$charge_id} - Status: {$status}";
+        
+        if (!empty($message)) {
+            $log_message .= " - {$message}";
+        }
+        
+        log_activity("ChargeManager: {$log_message}");
+    }
+}
+
+if (!function_exists('chargemanager_validate_webhook_payload')) {
+    /**
+     * Validate webhook payload structure
+     * @param array $payload
+     * @return array
+     */
+    function chargemanager_validate_webhook_payload($payload)
+    {
+        $errors = [];
+        
+        if (empty($payload)) {
+            $errors[] = 'Payload is empty';
+            return ['valid' => false, 'errors' => $errors];
+        }
+        
+        if (!isset($payload['event'])) {
+            $errors[] = 'Event type is missing';
+        }
+        
+        if (!isset($payload['payment'])) {
+            $errors[] = 'Payment data is missing';
+        } else {
+            $payment = $payload['payment'];
+            
+            if (!isset($payment['id'])) {
+                $errors[] = 'Payment ID is missing';
+            }
+        }
+        
+        return [
+            'valid' => empty($errors),
+            'errors' => $errors
+        ];
+    }
+}
+
+if (!function_exists('chargemanager_format_webhook_response')) {
+    /**
+     * Format webhook response
+     * @param bool $success
+     * @param string $message
+     * @param array $data
+     * @return array
+     */
+    function chargemanager_format_webhook_response($success, $message, $data = [])
+    {
+        $response = [
+            'success' => $success,
+            'message' => $message,
+            'timestamp' => date('Y-m-d H:i:s')
+        ];
+        
+        if (!empty($data)) {
+            $response['data'] = $data;
+        }
+        
+        return $response;
+    }
+} 
