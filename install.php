@@ -7,13 +7,32 @@ $CI = &get_instance();
 $db_prefix = db_prefix();
 $charset = $CI->db->char_set;
 
-// 1. chargemanager_billing_groups - Conforme relatório
+// Migration: Remove invoice_id column from billing_groups table if exists
+if ($CI->db->table_exists($db_prefix . 'chargemanager_billing_groups')) {
+    // Check if invoice_id column exists and remove it
+    $fields = $CI->db->field_data($db_prefix . 'chargemanager_billing_groups');
+    $has_invoice_id = false;
+    
+    foreach ($fields as $field) {
+        if ($field->name === 'invoice_id') {
+            $has_invoice_id = true;
+            break;
+        }
+    }
+    
+    if ($has_invoice_id) {
+        // Drop the invoice_id column as we now use individual invoices per charge
+        $CI->db->query('ALTER TABLE `' . $db_prefix . 'chargemanager_billing_groups` DROP COLUMN `invoice_id`');
+        log_activity('ChargeManager: Migrated billing_groups table - removed invoice_id column');
+    }
+}
+
+// 1. chargemanager_billing_groups - Updated structure without invoice_id
 if (!$CI->db->table_exists($db_prefix . 'chargemanager_billing_groups')) {
     $CI->db->query('CREATE TABLE `' . $db_prefix . "chargemanager_billing_groups` (
         `id` INT(11) NOT NULL AUTO_INCREMENT,
         `client_id` INT(11) NOT NULL,
         `contract_id` INT(11) NOT NULL,
-        `invoice_id` INT(11) NULL,
         `status` VARCHAR(50) NOT NULL DEFAULT 'open',
         `total_amount` DECIMAL(15,2) NOT NULL,
         `created_at` DATETIME NOT NULL,
@@ -21,7 +40,6 @@ if (!$CI->db->table_exists($db_prefix . 'chargemanager_billing_groups')) {
         PRIMARY KEY (`id`),
         KEY `client_id` (`client_id`),
         KEY `contract_id` (`contract_id`),
-        KEY `invoice_id` (`invoice_id`),
         KEY `status` (`status`)
     ) ENGINE=InnoDB DEFAULT CHARSET=" . $charset . ";");
 }

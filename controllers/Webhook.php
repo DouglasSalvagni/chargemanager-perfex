@@ -300,51 +300,64 @@ class Webhook extends CI_Controller
     }
 
     /**
-     * Create payment record in Perfex
+     * Create payment record in Perfex using payments_model
      */
     private function create_payment_record($charge, $payment_data)
     {
         if (!$charge->perfex_invoice_id) {
+            log_activity('ChargeManager Warning: Cannot create payment record - no invoice ID for charge #' . $charge->id);
             return false;
         }
 
-        // Load invoices model
+        // Load required models
         $this->load->model('invoices_model');
+        $this->load->model('payments_model');
         
-        // Get invoice
+        // Get invoice to validate
         $invoice = $this->invoices_model->get($charge->perfex_invoice_id);
         
         if (!$invoice) {
+            log_activity('ChargeManager Warning: Invoice not found for payment record - Invoice ID: ' . $charge->perfex_invoice_id);
             return false;
         }
 
-        // Prepare payment data
+        // Check if payment already exists for this transaction
+        $transaction_id = $payment_data['externalReference'] ?? $charge->gateway_charge_id;
+        if ($this->payments_model->transaction_exists($transaction_id, $charge->perfex_invoice_id)) {
+            log_activity('ChargeManager Warning: Payment already exists for transaction: ' . $transaction_id);
+            return false;
+        }
+
+        // Prepare payment data following Perfex standards
         $payment_insert_data = [
             'invoiceid' => $charge->perfex_invoice_id,
-            'amount' => $payment_data['value'] ?? $charge->value,
+            'amount' => floatval($payment_data['value'] ?? $charge->value),
             'paymentmode' => $this->get_payment_mode_id($payment_data['billingType'] ?? 'UNDEFINED'),
-            'paymentmethod' => $payment_data['billingType'] ?? 'UNDEFINED',
             'date' => date('Y-m-d'),
-            'daterecorded' => date('Y-m-d H:i:s'),
-            'note' => 'Pagamento via ChargeManager - ASAAS ID: ' . $charge->gateway_charge_id,
-            'transactionid' => $payment_data['externalReference'] ?? $charge->gateway_charge_id
+            'note' => 'Pagamento via ChargeManager/ASAAS - Gateway ID: ' . $charge->gateway_charge_id,
+            'transactionid' => $transaction_id,
+            // Prevent automatic email sending as this is from webhook
+            'do_not_send_email_template' => true
         ];
 
-        // Insert payment
-        $this->load->model('payments_model');
+        // Use payments_model->add() which handles all the invoice status updates automatically
         $payment_id = $this->payments_model->add($payment_insert_data);
 
         if ($payment_id) {
             // Update charge with payment record ID
             $this->db->where('id', $charge->id);
             $this->db->update(db_prefix() . 'chargemanager_charges', [
-                'payment_record_id' => $payment_id
+                'payment_record_id' => $payment_id,
+                'updated_at' => date('Y-m-d H:i:s')
             ]);
 
+            log_activity('ChargeManager: Payment record #' . $payment_id . ' created for charge #' . $charge->id . ' (Invoice #' . $charge->perfex_invoice_id . ')');
+            
             return $payment_id;
+        } else {
+            log_activity('ChargeManager Error: Failed to create payment record for charge #' . $charge->id);
+            return false;
         }
-
-        return false;
     }
 
     /**

@@ -168,10 +168,18 @@ class Chargemanager_billing_groups_model extends App_Model
             $billing_group->client = $this->db->get(db_prefix() . 'clients')->row();
         }
 
-        // Get invoice
-        if (!empty($billing_group->invoice_id)) {
-            $this->db->where('id', $billing_group->invoice_id);
-            $billing_group->invoice = $this->db->get(db_prefix() . 'invoices')->row();
+        // Get invoices for charges (new logic - multiple invoices per billing group)
+        $billing_group->invoices = [];
+        if (!empty($billing_group->charges)) {
+            foreach ($billing_group->charges as $charge) {
+                if (!empty($charge->perfex_invoice_id)) {
+                    $this->db->where('id', $charge->perfex_invoice_id);
+                    $invoice = $this->db->get(db_prefix() . 'invoices')->row();
+                    if ($invoice) {
+                        $billing_group->invoices[] = $invoice;
+                    }
+                }
+            }
         }
 
         return $billing_group;
@@ -315,15 +323,19 @@ class Chargemanager_billing_groups_model extends App_Model
     }
 
     /**
-     * Calculate billing group status based on charges
+     * Calculate billing group status based on individual charge invoices
      * @param int $billing_group_id
      * @return string
      */
     public function calculate_billing_group_status($billing_group_id)
     {
-        // Get charges for billing group
-        $this->db->where('billing_group_id', $billing_group_id);
-        $charges = $this->db->get(db_prefix() . 'chargemanager_charges')->result();
+        if (empty($billing_group_id)) {
+            return 'open';
+        }
+
+        // Get all charges for this billing group
+        $this->load->model('chargemanager_charges_model');
+        $charges = $this->chargemanager_charges_model->get_by_billing_group($billing_group_id);
 
         if (empty($charges)) {
             return 'open';
@@ -348,30 +360,36 @@ class Chargemanager_billing_groups_model extends App_Model
             }
         }
 
-        // Determine status
+        // Determine overall status
         if ($paid_charges == $total_charges) {
-            return 'paid';
-        } elseif ($paid_charges > 0) {
-            return 'partial';
-        } elseif ($overdue_charges > 0) {
-            return 'overdue';
-        } elseif ($cancelled_charges == $total_charges) {
-            return 'cancelled';
+            return 'completed'; // All charges paid
+        }
+        
+        if ($cancelled_charges == $total_charges) {
+            return 'cancelled'; // All charges cancelled
+        }
+        
+        if ($overdue_charges > 0) {
+            return 'overdue'; // At least one charge is overdue
+        }
+        
+        if ($paid_charges > 0) {
+            return 'partial'; // Some charges paid, some pending
         }
 
-        return 'open';
+        return 'open'; // Default status
     }
 
     /**
-     * Get payment summary for billing group
+     * Get payment summary for billing group based on individual charges/invoices
      * @param int $billing_group_id
      * @return array
      */
     public function get_payment_summary($billing_group_id)
     {
-        // Get charges
-        $this->db->where('billing_group_id', $billing_group_id);
-        $charges = $this->db->get(db_prefix() . 'chargemanager_charges')->result();
+        // Get charges using the charges model
+        $this->load->model('chargemanager_charges_model');
+        $charges = $this->chargemanager_charges_model->get_by_billing_group($billing_group_id);
 
         $summary = [
             'total_amount' => 0,
@@ -385,19 +403,19 @@ class Chargemanager_billing_groups_model extends App_Model
         ];
 
         foreach ($charges as $charge) {
-            $summary['total_amount'] += $charge->value;
+            $summary['total_amount'] += floatval($charge->value);
 
             switch ($charge->status) {
                 case 'paid':
-                    $summary['paid_amount'] += $charge->paid_amount ?: $charge->value;
+                    $summary['paid_amount'] += floatval($charge->paid_amount ?: $charge->value);
                     $summary['paid_charges']++;
                     break;
                 case 'overdue':
-                    $summary['overdue_amount'] += $charge->value;
+                    $summary['overdue_amount'] += floatval($charge->value);
                     $summary['overdue_charges']++;
                     break;
                 default:
-                    $summary['pending_amount'] += $charge->value;
+                    $summary['pending_amount'] += floatval($charge->value);
                     $summary['pending_charges']++;
                     break;
             }
@@ -417,183 +435,53 @@ class Chargemanager_billing_groups_model extends App_Model
     }
 
     /**
-     * Generate invoice for billing group
+     * Generate individual invoices for all charges in a billing group
      * @param int $billing_group_id
      * @param array $options
      * @return array
      */
-    public function generate_invoice($billing_group_id, $options = [])
+    public function generate_invoices_for_charges($billing_group_id, $options = [])
     {
         try {
-            // Get billing group with relationships
-            $billing_group = $this->get_with_relationships($billing_group_id);
-
-            if (!$billing_group || !$billing_group->client || !$billing_group->contract) {
-                throw new Exception(_l('chargemanager_billing_group_incomplete_data'));
-            }
-
-            // Check if invoice already exists
-            if (!empty($billing_group->invoice_id)) {
-                return [
-                    'success' => true,
-                    'invoice_id' => $billing_group->invoice_id,
-                    'message' => _l('chargemanager_invoice_already_exists')
-                ];
-            }
-
-            // Prepare invoice items based on charges
-            $invoice_items = [];
-            $order = 1;
+            // Get all charges for this billing group
+            $this->load->model('chargemanager_charges_model');
+            $charges = $this->chargemanager_charges_model->get_by_billing_group($billing_group_id);
             
-            if (!empty($billing_group->charges) && is_array($billing_group->charges)) {
-                foreach ($billing_group->charges as $charge) {
-                    $invoice_items[] = [
-                        'description' => sprintf(_l('chargemanager_charge_description'), $charge->billing_type ?? 'BOLETO', $charge->due_date ?? date('Y-m-d')),
-                        'long_description' => !empty($billing_group->contract->subject) ? $billing_group->contract->subject : '',
-                        'qty' => 1,
-                        'rate' => floatval($charge->value ?? 0),
-                        'unit' => '',
-                        'order' => $order++
-                    ];
-                }
+            if (empty($charges)) {
+                throw new Exception('No charges found for billing group #' . $billing_group_id);
             }
 
-            // Fallback if no charges found - create one item with total amount
-            if (empty($invoice_items)) {
-                $invoice_items[] = [
-                    'description' => 'Cobrança ChargeManager - Billing Group #' . $billing_group_id,
-                    'long_description' => !empty($billing_group->contract->subject) ? $billing_group->contract->subject : '',
-                    'qty' => 1,
-                    'rate' => floatval($billing_group->total_amount ?? 0),
-                    'unit' => '',
-                    'order' => 1
-                ];
-            }
+            $invoices_created = [];
+            $errors = [];
 
-            // Safe access to client properties
-            $client = $billing_group->client;
-            $billing_street = '';
-            $billing_city = '';
-            $billing_state = '';
-            $billing_zip = '';
-            $billing_country = '';
-
-            if (is_object($client)) {
-                $billing_street = $client->billing_street ?? $client->address ?? '';
-                $billing_city = $client->billing_city ?? $client->city ?? '';
-                $billing_state = $client->billing_state ?? $client->state ?? '';
-                $billing_zip = $client->billing_zip ?? $client->zip ?? '';
-                $billing_country = $client->billing_country ?? $client->country ?? '';
-            }
-
-            // Calculate totals
-            $subtotal = array_sum(array_column($invoice_items, 'rate'));
-            
-            // Prepare invoice data with items included - ensure all required fields are set
-            $invoice_data = [
-                'clientid' => (int)$billing_group->client_id,
-                'date' => date('Y-m-d'),
-                'duedate' => date('Y-m-d', strtotime('+30 days')),
-                'currency' => get_base_currency()->id,
-                'subtotal' => $subtotal,
-                'total' => $subtotal,
-                'adjustment' => 0,
-                'discount_percent' => 0,
-                'discount_total' => 0,
-                'discount_type' => '',
-                'sale_agent' => get_staff_user_id(),
-                'status' => defined('Invoices_model::STATUS_DRAFT') ? Invoices_model::STATUS_DRAFT : 6, // Draft status
-                'number_format' => get_option('invoice_number_format'),
-                'prefix' => get_option('invoice_prefix'),
-                'terms' => $options['terms'] ?? get_option('predefined_terms_invoice'),
-                'clientnote' => $options['client_note'] ?? get_option('predefined_clientnote_invoice'),
-                'adminnote' => 'Invoice generated by ChargeManager for Billing Group #' . $billing_group_id,
-                'billing_street' => $billing_street ?: '',
-                'billing_city' => $billing_city ?: '',
-                'billing_state' => $billing_state ?: '',
-                'billing_zip' => $billing_zip ?: '',
-                'billing_country' => $billing_country ?: get_option('invoice_company_country'),
-                'shipping_street' => $billing_street ?: '',
-                'shipping_city' => $billing_city ?: '',
-                'shipping_state' => $billing_state ?: '',
-                'shipping_zip' => $billing_zip ?: '',
-                'shipping_country' => $billing_country ?: get_option('invoice_company_country'),
-                'include_shipping' => 0,
-                'show_shipping_on_invoice' => 0,
-                'recurring' => 0,
-                'cycles' => 0,
-                'total_cycles' => 0,
-                'is_recurring_from' => null,
-                'custom_recurring' => 0,
-                'recurring_type' => null,
-                'repeat_every_custom' => null,
-                'repeat_type_custom' => null,
-                'last_recurring_date' => null,
-                'cancel_overdue_reminders' => 0,
-                'allowed_payment_modes' => serialize([]),
-                'token' => app_generate_hash(),
-                'newitems' => $invoice_items, // Items are created along with the invoice
-                'tags' => '',
-                'project_id' => 0
-            ];
-
-            // Load invoices model
-            $this->load->model('invoices_model');
-
-            // Separate items from invoice data to avoid webhook issues
-            $items_to_add = $invoice_data['newitems'];
-            unset($invoice_data['newitems']);
-            
-            // Create invoice without items first
-            $invoice_id = $this->invoices_model->add($invoice_data);
-
-            if (!$invoice_id) {
-                throw new Exception(_l('chargemanager_error_creating_invoice'));
-            }
-
-            // Add items to the created invoice
-            if (!empty($items_to_add)) {
-                foreach ($items_to_add as $item) {
-                    // Prepare item data for database insertion
-                    $item_data = [
-                        'rel_id' => $invoice_id,
-                        'rel_type' => 'invoice',
-                        'description' => $item['description'],
-                        'long_description' => $item['long_description'] ?? '',
-                        'qty' => $item['qty'],
-                        'rate' => $item['rate'],
-                        'unit' => $item['unit'] ?? '',
-                        'item_order' => $item['order'] ?? 1
-                    ];
-
-                    $this->db->insert(db_prefix() . 'itemable', $item_data);
+            foreach ($charges as $charge) {
+                // Skip if invoice already exists
+                if (!empty($charge->perfex_invoice_id)) {
+                    continue;
                 }
 
-                // Update invoice totals after adding items
-                $this->invoices_model->update([
-                    'subtotal' => $subtotal,
-                    'total' => $subtotal
-                ], $invoice_id);
+                $invoice_result = $this->chargemanager_charges_model->generate_individual_invoice($charge->id, $options);
+                
+                if ($invoice_result['success']) {
+                    $invoices_created[] = [
+                        'charge_id' => $charge->id,
+                        'invoice_id' => $invoice_result['invoice_id']
+                    ];
+                } else {
+                    $errors[] = 'Charge #' . $charge->id . ': ' . $invoice_result['message'];
+                }
             }
-
-            // Update billing group with invoice ID
-            $this->update($billing_group_id, ['invoice_id' => $invoice_id]);
-
-            // Update charges with invoice ID
-            $this->db->where('billing_group_id', $billing_group_id);
-            $this->db->update(db_prefix() . 'chargemanager_charges', [
-                'perfex_invoice_id' => $invoice_id,
-                'updated_at' => date('Y-m-d H:i:s')
-            ]);
 
             return [
-                'success' => true,
-                'invoice_id' => $invoice_id,
-                'message' => _l('chargemanager_invoice_created_successfully')
+                'success' => count($invoices_created) > 0,
+                'invoices_created' => $invoices_created,
+                'errors' => $errors,
+                'total_invoices' => count($invoices_created),
+                'total_errors' => count($errors)
             ];
 
         } catch (Exception $e) {
-            log_activity('ChargeManager Error in generate_invoice: ' . $e->getMessage());
+            log_activity('ChargeManager Error in generate_invoices_for_charges: ' . $e->getMessage());
             return [
                 'success' => false,
                 'message' => $e->getMessage()

@@ -320,38 +320,40 @@ class Billing_groups extends AdminController
                 return;
             }
 
-            // Generate invoice for billing group
-            $invoice_result = null;
-            $invoice_generated = false;
+            // Generate individual invoices for each charge
+            $invoices_generated = 0;
+            $invoice_errors = [];
             
             try {
-                $invoice_result = $this->chargemanager_billing_groups_model->generate_invoice($billing_group_id);
-                
-                if ($invoice_result && $invoice_result['success']) {
-                    // Update billing group with invoice ID
-                    $this->chargemanager_billing_groups_model->update($billing_group_id, [
-                        'invoice_id' => $invoice_result['invoice_id']
-                    ]);
-                    $invoice_generated = true;
-                } else {
-                    // Log warning but don't fail the entire operation
-                    $error_msg = isset($invoice_result['message']) ? $invoice_result['message'] : 'Unknown error';
-                    log_activity('ChargeManager Warning: Failed to generate invoice for billing group #' . $billing_group_id . ': ' . $error_msg);
+                foreach ($charges_created as $charge_info) {
+                    $invoice_result = $this->chargemanager_charges_model->generate_individual_invoice($charge_info['local_id']);
+                    
+                    if ($invoice_result && $invoice_result['success']) {
+                        $invoices_generated++;
+                        log_activity('ChargeManager: Invoice #' . $invoice_result['invoice_id'] . ' created for charge #' . $charge_info['local_id']);
+                    } else {
+                        $error_msg = isset($invoice_result['message']) ? $invoice_result['message'] : 'Unknown error';
+                        $invoice_errors[] = 'Charge #' . $charge_info['local_id'] . ': ' . $error_msg;
+                        log_activity('ChargeManager Warning: Failed to generate invoice for charge #' . $charge_info['local_id'] . ': ' . $error_msg);
+                    }
                 }
             } catch (Exception $invoice_exception) {
-                // Log warning but don't fail the entire operation
-                log_activity('ChargeManager Warning: Exception while generating invoice for billing group #' . $billing_group_id . ': ' . $invoice_exception->getMessage());
+                log_activity('ChargeManager Warning: Exception while generating invoices: ' . $invoice_exception->getMessage());
+                $invoice_errors[] = 'Exception: ' . $invoice_exception->getMessage();
             }
 
             // Prepare success message
             $success_messages = [];
-            $success_messages[] = sprintf(_l('chargemanager_billing_group_created_successfully_with_id'), $billing_group_id);
-            $success_messages[] = sprintf(_l('chargemanager_charges_created_count'), count($charges_created));
+            $success_messages[] = 'Grupo de cobrança #' . $billing_group_id . ' criado com sucesso';
+            $success_messages[] = count($charges_created) . ' cobrança(s) criada(s) com sucesso';
             
-            if ($invoice_generated && $invoice_result && isset($invoice_result['invoice_id'])) {
-                $success_messages[] = sprintf(_l('chargemanager_invoice_created_with_id'), $invoice_result['invoice_id']);
-            } else {
-                $success_messages[] = _l('chargemanager_invoice_generation_failed_but_charges_created');
+            if ($invoices_generated > 0) {
+                $success_messages[] = sprintf('Invoices criadas: %d de %d', $invoices_generated, count($charges_created));
+            }
+            
+            if (!empty($invoice_errors)) {
+                $success_messages[] = 'Erros na criação de invoices:';
+                $success_messages = array_merge($success_messages, $invoice_errors);
             }
             
             if (!empty($charges_failed)) {
@@ -359,15 +361,16 @@ class Billing_groups extends AdminController
                 $success_messages[] = implode('<br>', $charges_failed);
                 set_alert('warning', implode('<br>', $success_messages));
             } else {
-                set_alert('success', implode('<br>', $success_messages));
+                $alert_type = !empty($invoice_errors) ? 'warning' : 'success';
+                set_alert($alert_type, implode('<br>', $success_messages));
             }
 
             echo json_encode([
                 'success' => true,
                 'message' => implode('<br>', $success_messages),
                 'billing_group_id' => $billing_group_id,
-                'invoice_id' => ($invoice_generated && $invoice_result && isset($invoice_result['invoice_id'])) ? $invoice_result['invoice_id'] : null,
-                'invoice_generated' => $invoice_generated,
+                'invoices_generated' => $invoices_generated,
+                'invoice_errors' => count($invoice_errors),
                 'charges_created' => count($charges_created),
                 'charges_failed' => count($charges_failed)
             ]);
