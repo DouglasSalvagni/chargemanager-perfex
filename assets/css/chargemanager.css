@@ -1,0 +1,661 @@
+/**
+ * ChargeManager CSS Styles
+ * Estilos CSS para o módulo ChargeManager
+ */
+
+/* General Styles */
+.chargemanager-container {
+    padding: 20px 0;
+}
+
+.chargemanager-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.chargemanager-card-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #e0e0e0;
+    background: #f8f9fa;
+}
+
+.chargemanager-card-body {
+    padding: 20px;
+}
+
+/* Billing Groups Styles */
+.billing-group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.billing-group-status {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.billing-group-progress {
+    margin: 15px 0;
+}
+
+.billing-group-progress .progress {
+    height: 8px;
+    border-radius: 4px;
+}
+
+.billing-group-details {
+    margin-top: 20px;
+}
+
+.billing-group-summary {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+}
+
+/* Contract Selection Styles */
+.contracts-container {
+    max-height: 250px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    background: #fff;
+}
+
+/* Billing Groups Tab Styles */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: " (Loading...)";
+    color: #999;
+    font-style: italic;
+}
+
+.charge-item {
+    margin-bottom: 15px;
+}
+
+.charge-item .panel-heading {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.charge-item .panel-title {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.charges-list {
+    margin-bottom: 20px;
+}
+
+#charges-container.hide {
+    display: none !important;
+}
+
+.form-control-static {
+    padding-top: 7px;
+    padding-bottom: 7px;
+    margin-bottom: 0;
+    min-height: 34px;
+}
+
+.validation-status .label {
+    font-size: 12px;
+    padding: 4px 8px;
+}
+
+.contract-item {
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.contract-item:last-child {
+    border-bottom: none;
+}
+
+.contract-checkbox {
+    margin-right: 10px;
+}
+
+.selected-contracts-summary {
+    background: #e8f4fd;
+    border: 1px solid #b3d7ff;
+    border-radius: 4px;
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.selected-contracts-list .contract-item {
+    background: #fff;
+    padding: 8px 12px;
+    margin: 5px 0;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+/* Status Labels */
+.label-lg {
+    font-size: 12px;
+    padding: 6px 12px;
+}
+
+.status-open {
+    color: #856404;
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+}
+
+.status-partial {
+    color: #0c5460;
+    background-color: #d1ecf1;
+    border: 1px solid #bee5eb;
+}
+
+.status-paid {
+    color: #155724;
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+}
+
+.status-cancelled {
+    color: #721c24;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+}
+
+/* Charge Status */
+.charge-status-pending {
+    color: #856404;
+    background-color: #fff3cd;
+}
+
+.charge-status-received {
+    color: #155724;
+    background-color: #d4edda;
+}
+
+.charge-status-overdue {
+    color: #721c24;
+    background-color: #f8d7da;
+}
+
+.charge-status-cancelled {
+    color: #6c757d;
+    background-color: #e2e3e5;
+}
+
+/* Settings Page Styles */
+.settings-section {
+    margin-bottom: 30px;
+}
+
+.settings-section h5 {
+    color: #333;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.connection-status {
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+}
+
+.connection-status.success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.connection-status.error {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.connection-status.info {
+    background-color: #d1ecf1;
+    border: 1px solid #bee5eb;
+    color: #0c5460;
+}
+
+/* Form Styles */
+.form-group-inline {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-group-inline .form-control {
+    flex: 1;
+}
+
+.password-toggle {
+    cursor: pointer;
+    color: #6c757d;
+}
+
+.password-toggle:hover {
+    color: #495057;
+}
+
+/* Modal Styles */
+.modal-header .modal-title {
+    color: #333;
+    font-weight: 600;
+}
+
+.modal-body .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.billing-group-modal .modal-dialog {
+    max-width: 800px;
+}
+
+.billing-group-details-modal .modal-dialog {
+    max-width: 900px;
+}
+
+/* Table Styles */
+.chargemanager-table {
+    margin-top: 20px;
+}
+
+.chargemanager-table .table {
+    margin-bottom: 0;
+}
+
+.chargemanager-table .table th {
+    background-color: #f8f9fa;
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+}
+
+.chargemanager-table .table td {
+    vertical-align: middle;
+}
+
+.table-actions {
+    white-space: nowrap;
+}
+
+.table-actions .btn {
+    margin-right: 5px;
+}
+
+.table-actions .btn:last-child {
+    margin-right: 0;
+}
+
+/* Badge Styles */
+.badge-contracts {
+    background-color: #6f42c1;
+    color: white;
+}
+
+.badge-charges {
+    background-color: #fd7e14;
+    color: white;
+}
+
+/* Progress Bar Styles */
+.progress-custom {
+    height: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-custom .progress-bar {
+    font-size: 12px;
+    line-height: 20px;
+    color: #fff;
+    font-weight: 600;
+}
+
+/* Client Tab Styles */
+.client-tab-billing-groups {
+    padding: 20px 0;
+}
+
+.client-tab-header {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.client-tab-actions {
+    margin-bottom: 20px;
+}
+
+/* Payment Details Styles */
+.payment-details {
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 15px;
+    margin: 10px 0;
+}
+
+.payment-details .payment-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.payment-details .payment-item:last-child {
+    border-bottom: none;
+}
+
+.payment-details .payment-label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.payment-details .payment-value {
+    color: #333;
+}
+
+/* Barcode and PIX Styles */
+.barcode-container,
+.pix-container {
+    text-align: center;
+    padding: 20px;
+}
+
+.barcode-number,
+.pix-code {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    background: #f8f9fa;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    word-break: break-all;
+}
+
+.copy-button {
+    margin-top: 10px;
+}
+
+/* Log Styles */
+.log-entry {
+    padding: 10px 15px;
+    margin: 5px 0;
+    border-left: 4px solid #e0e0e0;
+    background: #f8f9fa;
+}
+
+.log-entry.success {
+    border-left-color: #28a745;
+}
+
+.log-entry.error {
+    border-left-color: #dc3545;
+}
+
+.log-entry.warning {
+    border-left-color: #ffc107;
+}
+
+.log-entry.info {
+    border-left-color: #17a2b8;
+}
+
+.log-timestamp {
+    font-size: 12px;
+    color: #6c757d;
+    margin-bottom: 5px;
+}
+
+.log-message {
+    font-size: 14px;
+    color: #333;
+}
+
+/* Activity Timeline */
+.activity-timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.activity-timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e0e0e0;
+}
+
+.activity-item {
+    position: relative;
+    margin-bottom: 20px;
+    background: #fff;
+    padding: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+}
+
+.activity-item::before {
+    content: '';
+    position: absolute;
+    left: -22px;
+    top: 15px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #6c757d;
+}
+
+.activity-item.success::before {
+    border-color: #28a745;
+}
+
+.activity-item.error::before {
+    border-color: #dc3545;
+}
+
+.activity-item.warning::before {
+    border-color: #ffc107;
+}
+
+.activity-item.info::before {
+    border-color: #17a2b8;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .billing-group-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .client-tab-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .table-responsive {
+        font-size: 14px;
+    }
+    
+    .modal-dialog {
+        margin: 10px;
+    }
+    
+    .billing-group-modal .modal-dialog,
+    .billing-group-details-modal .modal-dialog {
+        max-width: none;
+    }
+    
+    .form-group-inline {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .contracts-container {
+        max-height: 200px;
+    }
+}
+
+@media (max-width: 480px) {
+    .chargemanager-card-body {
+        padding: 15px;
+    }
+    
+    .payment-details .payment-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+    
+    .table-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .table-actions .btn {
+        margin-right: 0;
+    }
+}
+
+/* Utility Classes */
+.text-currency {
+    font-weight: 600;
+    color: #28a745;
+}
+
+.text-overdue {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.text-pending {
+    color: #ffc107;
+    font-weight: 600;
+}
+
+.border-success {
+    border-color: #28a745 !important;
+}
+
+.border-danger {
+    border-color: #dc3545 !important;
+}
+
+.border-warning {
+    border-color: #ffc107 !important;
+}
+
+.bg-light-success {
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+.bg-light-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.bg-light-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+.bg-light-info {
+    background-color: rgba(23, 162, 184, 0.1);
+}
+
+/* Animation */
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Loading States */
+.loading-overlay {
+    position: relative;
+}
+
+.loading-overlay::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Print Styles */
+@media print {
+    .chargemanager-card {
+        box-shadow: none;
+        border: 1px solid #ccc;
+    }
+    
+    .table-actions,
+    .modal,
+    .btn {
+        display: none !important;
+    }
+    
+    .table {
+        font-size: 12px;
+    }
+} 
