@@ -11,10 +11,10 @@
                     <div class="panel-body">
                         <div class="row">
                             <div class="col-md-8">
-                                <h4 class="no-margin">
-                                    <i class="fa fa-file-text-o"></i>
-                                    <?php echo htmlspecialchars($billing_group->billing_group_name); ?>
-                                </h4>
+                                                <h4 class="no-margin">
+                    <i class="fa fa-file-text-o"></i>
+                    <?php echo _l('chargemanager_billing_group'); ?> #<?php echo $billing_group->id; ?>
+                </h4>
                                 <p class="text-muted">
                                     <?php echo _l('chargemanager_created_at'); ?>:
                                     <?php echo _dt($billing_group->created_at); ?>
@@ -34,12 +34,17 @@
                                         $status_text = _l('chargemanager_status_partial');
                                         break;
                                     case 'paid':
+                                    case 'completed':
                                         $status_class = 'label-success';
                                         $status_text = _l('chargemanager_status_paid');
                                         break;
                                     case 'cancelled':
                                         $status_class = 'label-danger';
                                         $status_text = _l('chargemanager_status_cancelled');
+                                        break;
+                                    default:
+                                        $status_class = 'label-default';
+                                        $status_text = ucfirst($billing_group->status);
                                         break;
                                 }
                                 ?>
@@ -72,31 +77,24 @@
                                     </tr>
                                     <tr>
                                         <td><strong><?php echo _l('chargemanager_total_value'); ?>:</strong></td>
-                                        <td>R$ <?php echo number_format($billing_group->total_value, 2, ',', '.'); ?></td>
+                                        <td><?php echo app_format_money($billing_group->total_amount, get_base_currency()); ?></td>
                                     </tr>
                                     <tr>
-                                        <td><strong><?php echo _l('chargemanager_due_date'); ?>:</strong></td>
-                                        <td><?php echo _d($billing_group->due_date); ?></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong><?php echo _l('chargemanager_billing_type'); ?>:</strong></td>
+                                        <td><strong><?php echo _l('chargemanager_contract'); ?>:</strong></td>
                                         <td>
-                                            <?php
-                                            $billing_types = [
-                                                'BOLETO' => _l('chargemanager_billing_type_boleto'),
-                                                'PIX' => _l('chargemanager_billing_type_pix'),
-                                                'CREDIT_CARD' => _l('chargemanager_billing_type_credit_card')
-                                            ];
-                                            echo $billing_types[$billing_group->billing_type] ?? $billing_group->billing_type;
-                                            ?>
+                                            <?php if (!empty($billing_group->contract)): ?>
+                                                <a href="<?php echo admin_url('contracts/contract/' . $billing_group->contract->id); ?>" target="_blank">
+                                                    <?php echo htmlspecialchars($billing_group->contract->subject); ?>
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
-                                    <?php if (!empty($billing_group->description)): ?>
-                                        <tr>
-                                            <td><strong><?php echo _l('chargemanager_description'); ?>:</strong></td>
-                                            <td><?php echo nl2br(htmlspecialchars($billing_group->description)); ?></td>
-                                        </tr>
-                                    <?php endif; ?>
+                                    <tr>
+                                        <td><strong><?php echo _l('chargemanager_total_charges'); ?>:</strong></td>
+                                        <td><?php echo count($charges); ?></td>
+                                    </tr>
                                 </table>
                             </div>
                         </div>
@@ -117,17 +115,17 @@
                                     </tr>
                                     <tr>
                                         <td><strong><?php echo _l('chargemanager_total_paid'); ?>:</strong></td>
-                                        <td>R$ <?php echo number_format($total_paid, 2, ',', '.'); ?></td>
+                                        <td><?php echo app_format_money($total_paid, get_base_currency()); ?></td>
                                     </tr>
                                     <tr>
                                         <td><strong><?php echo _l('chargemanager_remaining'); ?>:</strong></td>
-                                        <td>R$ <?php echo number_format($billing_group->total_value - $total_paid, 2, ',', '.'); ?></td>
+                                        <td><?php echo app_format_money($billing_group->total_amount - $total_paid, get_base_currency()); ?></td>
                                     </tr>
                                     <tr>
                                         <td><strong><?php echo _l('chargemanager_progress'); ?>:</strong></td>
                                         <td>
                                             <?php
-                                            $progress = $billing_group->total_value > 0 ? ($total_paid / $billing_group->total_value) * 100 : 0;
+                                            $progress = $billing_group->total_amount > 0 ? ($total_paid / $billing_group->total_amount) * 100 : 0;
                                             ?>
                                             <div class="progress">
                                                 <div class="progress-bar progress-bar-<?php echo $progress >= 100 ? 'success' : ($progress > 0 ? 'info' : 'warning'); ?>"
@@ -168,10 +166,15 @@
                                         <?php foreach ($contracts as $contract): ?>
                                             <tr>
                                                 <td><?php echo htmlspecialchars($contract->subject); ?></td>
-                                                <td>R$ <?php echo number_format($contract->contract_value, 2, ',', '.'); ?></td>
+                                                <td><?php echo app_format_money($contract->contract_value, get_base_currency()); ?></td>
                                                 <td><?php echo _d($contract->datestart); ?></td>
                                                 <td><?php echo _d($contract->dateend); ?></td>
-                                                <td><?php echo get_contract_type_by_id($contract->contract_type); ?></td>
+                                                <td>
+                                                    <?php 
+                                                    // No Perfex CRM, contract_type é um campo de texto livre
+                                                    echo !empty($contract->contract_type) ? htmlspecialchars($contract->contract_type) : '-';
+                                                    ?>
+                                                </td>
                                                 <td>
                                                     <a href="<?php echo admin_url('contracts/contract/' . $contract->id); ?>"
                                                         class="btn btn-default btn-xs" target="_blank">
@@ -185,6 +188,58 @@
                             </div>
                         <?php else: ?>
                             <p class="text-muted"><?php echo _l('chargemanager_no_contracts_associated'); ?></p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <!-- Invoices -->
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h5 class="panel-title">
+                            <i class="fa fa-file-text-o"></i> <?php echo _l('chargemanager_invoices'); ?>
+                        </h5>
+                    </div>
+                    <div class="panel-body">
+                        <?php if (!empty($invoices)): ?>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th><?php echo _l('invoice_number'); ?></th>
+                                            <th><?php echo _l('invoice_date'); ?></th>
+                                            <th><?php echo _l('invoice_duedate'); ?></th>
+                                            <th><?php echo _l('invoice_total'); ?></th>
+                                            <th><?php echo _l('invoice_status'); ?></th>
+                                            <th><?php echo _l('actions'); ?></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($invoices as $invoice): ?>
+                                            <tr>
+                                                <td>
+                                                    <a href="<?php echo admin_url('invoices/list_invoices/' . $invoice->id); ?>" target="_blank">
+                                                        <?php echo format_invoice_number($invoice->id); ?>
+                                                    </a>
+                                                </td>
+                                                <td><?php echo _d($invoice->date); ?></td>
+                                                <td><?php echo _d($invoice->duedate); ?></td>
+                                                <td><?php echo app_format_money($invoice->total, get_base_currency()); ?></td>
+                                                <td>
+                                                    <?php echo format_invoice_status($invoice->status, '', true); ?>
+                                                </td>
+                                                <td>
+                                                    <a href="<?php echo admin_url('invoices/list_invoices/' . $invoice->id); ?>"
+                                                        class="btn btn-default btn-xs" target="_blank">
+                                                        <i class="fa fa-eye"></i> <?php echo _l('view'); ?>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php else: ?>
+                            <p class="text-muted"><?php echo _l('chargemanager_no_invoices_found'); ?></p>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -205,6 +260,7 @@
                                             <th><?php echo _l('chargemanager_charge_id'); ?></th>
                                             <th><?php echo _l('chargemanager_value'); ?></th>
                                             <th><?php echo _l('chargemanager_due_date'); ?></th>
+                                            <th><?php echo _l('chargemanager_billing_type'); ?></th>
                                             <th><?php echo _l('chargemanager_status'); ?></th>
                                             <th><?php echo _l('chargemanager_payment_date'); ?></th>
                                             <th><?php echo _l('chargemanager_invoice'); ?></th>
@@ -215,10 +271,21 @@
                                         <?php foreach ($charges as $charge): ?>
                                             <tr>
                                                 <td>
+                                                    <strong>#<?php echo $charge->id; ?></strong><br>
                                                     <small class="text-muted"><?php echo $charge->gateway_charge_id ?? '-'; ?></small>
                                                 </td>
-                                                <td>R$ <?php echo number_format($charge->value, 2, ',', '.'); ?></td>
+                                                <td><?php echo app_format_money($charge->value, get_base_currency()); ?></td>
                                                 <td><?php echo _d($charge->due_date); ?></td>
+                                                <td>
+                                                    <?php
+                                                    $billing_type_labels = [
+                                                        'BOLETO' => '<i class="fa fa-barcode"></i> ' . _l('chargemanager_billing_type_boleto'),
+                                                        'PIX' => '<i class="fa fa-qrcode"></i> ' . _l('chargemanager_billing_type_pix'),
+                                                        'CREDIT_CARD' => '<i class="fa fa-credit-card"></i> ' . _l('chargemanager_billing_type_credit_card')
+                                                    ];
+                                                    echo $billing_type_labels[$charge->billing_type] ?? $charge->billing_type;
+                                                    ?>
+                                                </td>
                                                 <td>
                                                     <?php
                                                     $charge_status_class = '';
@@ -229,6 +296,7 @@
                                                             $charge_status_text = _l('chargemanager_charge_status_pending');
                                                             break;
                                                         case 'received':
+                                                        case 'paid':
                                                             $charge_status_class = 'label-success';
                                                             $charge_status_text = _l('chargemanager_charge_status_received');
                                                             break;
@@ -240,6 +308,10 @@
                                                             $charge_status_class = 'label-default';
                                                             $charge_status_text = _l('chargemanager_charge_status_cancelled');
                                                             break;
+                                                        default:
+                                                            $charge_status_class = 'label-default';
+                                                            $charge_status_text = ucfirst($charge->status);
+                                                            break;
                                                     }
                                                     ?>
                                                     <span class="label <?php echo $charge_status_class; ?>">
@@ -247,13 +319,13 @@
                                                     </span>
                                                 </td>
                                                 <td>
-                                                    <?php echo $charge->payment_date ? _dt($charge->payment_date) : '-'; ?>
+                                                    <?php echo $charge->paid_at ? _dt($charge->paid_at) : '-'; ?>
                                                 </td>
                                                 <td>
-                                                    <?php if ($charge->invoice_id): ?>
-                                                        <a href="<?php echo admin_url('invoices/list_invoices/' . $charge->invoice_id); ?>"
+                                                    <?php if ($charge->perfex_invoice_id): ?>
+                                                        <a href="<?php echo admin_url('invoices/list_invoices/' . $charge->perfex_invoice_id); ?>"
                                                             target="_blank" class="text-success">
-                                                            <i class="fa fa-file-text-o"></i> #<?php echo $charge->invoice_id; ?>
+                                                            <i class="fa fa-file-text-o"></i> <?php echo format_invoice_number($charge->perfex_invoice_id); ?>
                                                         </a>
                                                     <?php else: ?>
                                                         <span class="text-muted">-</span>
@@ -322,7 +394,7 @@
                                                 <td><?php echo _dt($log->created_at); ?></td>
                                                 <td>
                                                     <span class="label label-default">
-                                                        <?php echo ucfirst($log->sync_type); ?>
+                                                        <?php echo ucfirst($log->event_type); ?>
                                                     </span>
                                                 </td>
                                                 <td><?php echo htmlspecialchars($log->message); ?></td>
@@ -349,8 +421,6 @@
         </div>
     </div>
 </div>
-
-<?php init_tail(); ?>
 
 <!-- Modals for Payment Info -->
 <div class="modal fade" id="barcode-modal" tabindex="-1" role="dialog">
@@ -404,6 +474,8 @@
         </div>
     </div>
 </div>
+
+<?php init_tail(); ?>
 
 <script>
     function showBarcode(barcode) {

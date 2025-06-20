@@ -401,7 +401,40 @@ class Billing_groups extends AdminController
             show_404();
         }
 
+        // Preparar dados das charges
+        $charges = !empty($billing_group->charges) ? $billing_group->charges : [];
+        
+        // Calcular total pago
+        $total_paid = 0;
+        foreach ($charges as $charge) {
+            if ($charge->status === 'received' || $charge->status === 'paid') {
+                $total_paid += floatval($charge->paid_amount ?: $charge->value);
+            }
+        }
+        
+        // Preparar dados dos contratos (convertendo o objeto único em array para compatibilidade com a view)
+        $contracts = [];
+        if (!empty($billing_group->contract)) {
+            $contracts = [$billing_group->contract];
+        }
+        
+        // Preparar dados dos invoices
+        $invoices = !empty($billing_group->invoices) ? $billing_group->invoices : [];
+        
+        // Buscar activity log se necessário (opcional por enquanto)
+        $activity_log = [];
+        $this->db->where('perfex_entity_type', 'billing_group');
+        $this->db->where('perfex_entity_id', $id);
+        $this->db->order_by('created_at', 'DESC');
+        $this->db->limit(20);
+        $activity_log = $this->db->get(db_prefix() . 'chargemanager_sync_logs')->result();
+
         $data['billing_group'] = $billing_group;
+        $data['charges'] = $charges;
+        $data['total_paid'] = $total_paid;
+        $data['contracts'] = $contracts;
+        $data['invoices'] = $invoices;
+        $data['activity_log'] = $activity_log;
         $data['title'] = _l('chargemanager_view_billing_group');
         
         $this->load->view('admin/billing_groups/view', $data);
