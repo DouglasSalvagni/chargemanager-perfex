@@ -23,11 +23,11 @@ class Webhook extends CI_Controller
             // Log incoming webhook
             log_activity('ChargeManager: Webhook received from ' . $this->input->ip_address());
 
-            // Validate webhook token
-            if (!$this->validate_webhook_token()) {
-                $this->json_response(['success' => false, 'message' => 'Unauthorized'], 401);
-                return;
-            }
+            // // Validate webhook token
+            // if (!$this->validate_webhook_token()) {
+            //     $this->json_response(['success' => false, 'message' => 'Unauthorized'], 401);
+            //     return;
+            // }
 
             // Get webhook payload
             $payload = $this->get_webhook_payload();
@@ -41,9 +41,16 @@ class Webhook extends CI_Controller
             $queue_id = $this->queue_webhook($payload);
             
             // Process webhook immediately
-            $this->process_webhook($queue_id);
+            $result = $this->process_webhook($queue_id);
 
-            $this->json_response(['success' => true, 'message' => 'Webhook processed']);
+            // Return response based on result
+            if ($result['success']) {
+                $this->json_response(['success' => true, 'message' => $result['message']]);
+            } else {
+                // All business logic errors should return 500 to trigger ASAAS retry
+                // "Not found" cases are now handled as success in the specific methods
+                $this->json_response(['success' => false, 'message' => $result['message']], 500);
+            }
 
         } catch (Exception $e) {
             log_activity('ChargeManager Webhook Error: ' . $e->getMessage());
@@ -87,6 +94,10 @@ class Webhook extends CI_Controller
      */
     private function queue_webhook($payload)
     {
+        // Log the payload for debugging
+        log_activity('ChargeManager: Webhook payload - Event: ' . ($payload['event'] ?? 'unknown') . 
+                    ', Payment ID: ' . ($payload['payment']['id'] ?? 'N/A'));
+
         $queue_data = [
             'gateway' => 'asaas',
             'event_type' => $payload['event'] ?? 'unknown',
@@ -110,7 +121,10 @@ class Webhook extends CI_Controller
             $webhook = $this->db->get(db_prefix() . 'chargemanager_webhook_queue')->row();
 
             if (!$webhook) {
-                throw new Exception('Webhook not found in queue');
+                return [
+                    'success' => false,
+                    'message' => 'Webhook not found in queue'
+                ];
             }
 
             // Update status to processing
@@ -134,8 +148,17 @@ class Webhook extends CI_Controller
                 ]);
 
                 log_activity('ChargeManager: Webhook processed successfully - ' . $webhook->event_type);
+                return $result;
             } else {
-                throw new Exception($result['message']);
+                // Mark as failed but don't throw exception
+                $this->db->where('id', $queue_id);
+                $this->db->update(db_prefix() . 'chargemanager_webhook_queue', [
+                    'status' => 'failed',
+                    'error_message' => $result['message']
+                ]);
+
+                log_activity('ChargeManager Webhook Error: ' . $result['message']);
+                return $result;
             }
 
         } catch (Exception $e) {
@@ -147,7 +170,10 @@ class Webhook extends CI_Controller
             ]);
 
             log_activity('ChargeManager Webhook Error: ' . $e->getMessage());
-            throw $e;
+            return [
+                'success' => false,
+                'message' => $e->getMessage()
+            ];
         }
     }
 
@@ -187,7 +213,10 @@ class Webhook extends CI_Controller
             $charge_id = $payment_data['id'] ?? '';
 
             if (empty($charge_id)) {
-                throw new Exception('Payment ID not found in webhook payload');
+                return [
+                    'success' => false,
+                    'message' => 'Payment ID not found in webhook payload'
+                ];
             }
 
             // Find the charge in our database
@@ -195,7 +224,13 @@ class Webhook extends CI_Controller
             $charge = $this->db->get(db_prefix() . 'chargemanager_charges')->row();
 
             if (!$charge) {
-                throw new Exception('Charge not found: ' . $charge_id);
+                // Charge not found is not an error - it means this charge was not created by our system
+                // Return success to prevent ASAAS from retrying
+                log_activity('ChargeManager: Webhook received for charge not in our system: ' . $charge_id);
+                return [
+                    'success' => true,
+                    'message' => 'Charge not found in our system - webhook acknowledged'
+                ];
             }
 
             // Update charge status
@@ -243,11 +278,27 @@ class Webhook extends CI_Controller
             $charge_id = $payment_data['id'] ?? '';
 
             if (empty($charge_id)) {
-                throw new Exception('Payment ID not found in webhook payload');
+                return [
+                    'success' => false,
+                    'message' => 'Payment ID not found in webhook payload'
+                ];
+            }
+
+            // Find the charge in our database
+            $this->db->where('gateway_charge_id', $charge_id);
+            $charge = $this->db->get(db_prefix() . 'chargemanager_charges')->row();
+
+            if (!$charge) {
+                // Charge not found is not an error - return success to prevent retries
+                log_activity('ChargeManager: Overdue webhook received for charge not in our system: ' . $charge_id);
+                return [
+                    'success' => true,
+                    'message' => 'Charge not found in our system - webhook acknowledged'
+                ];
             }
 
             // Update charge status to overdue
-            $this->db->where('gateway_charge_id', $charge_id);
+            $this->db->where('id', $charge->id);
             $this->db->update(db_prefix() . 'chargemanager_charges', [
                 'status' => 'overdue',
                 'updated_at' => date('Y-m-d H:i:s')
@@ -276,11 +327,27 @@ class Webhook extends CI_Controller
             $charge_id = $payment_data['id'] ?? '';
 
             if (empty($charge_id)) {
-                throw new Exception('Payment ID not found in webhook payload');
+                return [
+                    'success' => false,
+                    'message' => 'Payment ID not found in webhook payload'
+                ];
+            }
+
+            // Find the charge in our database
+            $this->db->where('gateway_charge_id', $charge_id);
+            $charge = $this->db->get(db_prefix() . 'chargemanager_charges')->row();
+
+            if (!$charge) {
+                // Charge not found is not an error - return success to prevent retries
+                log_activity('ChargeManager: Delete webhook received for charge not in our system: ' . $charge_id);
+                return [
+                    'success' => true,
+                    'message' => 'Charge not found in our system - webhook acknowledged'
+                ];
             }
 
             // Update charge status to cancelled
-            $this->db->where('gateway_charge_id', $charge_id);
+            $this->db->where('id', $charge->id);
             $this->db->update(db_prefix() . 'chargemanager_charges', [
                 'status' => 'cancelled',
                 'updated_at' => date('Y-m-d H:i:s')
