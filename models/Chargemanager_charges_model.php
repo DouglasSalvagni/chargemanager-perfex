@@ -154,17 +154,35 @@ class Chargemanager_charges_model extends App_Model
             // Log activity
             log_activity('ChargeManager: Charge #' . $charge_id . ' updated successfully');
 
-            // Hook: After charge edit
+            // Hook: After charge edit - with error suppression for external modules
             if (function_exists('hooks')) {
-                $hook_data = [
-                    'charge_id' => $charge_id,
-                    'previous_data' => $current_charge,
-                    'current_data' => $updated_charge,
-                    'updated_fields' => array_keys($update_data),
-                    'invoice_updated' => $invoice_update_result !== null,
-                    'invoice_update_result' => $invoice_update_result
-                ];
-                hooks()->do_action('after_chargemanager_charge_edit', $hook_data);
+                try {
+                    // Temporarily suppress warnings from external modules
+                    $original_error_reporting = error_reporting();
+                    error_reporting($original_error_reporting & ~E_WARNING & ~E_DEPRECATED);
+                    
+                    $hook_data = [
+                        'charge_id' => $charge_id,
+                        'previous_data' => $current_charge,
+                        'current_data' => $updated_charge,
+                        'updated_fields' => array_keys($update_data),
+                        'invoice_updated' => $invoice_update_result !== null,
+                        'invoice_update_result' => $invoice_update_result
+                    ];
+                    hooks()->do_action('after_chargemanager_charge_edit', $hook_data);
+                    
+                    // Restore original error reporting
+                    error_reporting($original_error_reporting);
+                    
+                } catch (Exception $hook_exception) {
+                    // Log hook errors but don't fail the update
+                    log_activity('ChargeManager Warning: Hook error in after_chargemanager_charge_edit: ' . $hook_exception->getMessage());
+                    
+                    // Restore error reporting in case of exception
+                    if (isset($original_error_reporting)) {
+                        error_reporting($original_error_reporting);
+                    }
+                }
             }
 
             // Update billing group status if applicable
@@ -756,7 +774,6 @@ class Chargemanager_charges_model extends App_Model
 
             // Load required models
             $this->load->model('invoices_model');
-            $this->load->model('clients_model');
 
             // Get current invoice
             $invoice = $this->invoices_model->get($updated_charge->perfex_invoice_id);
@@ -772,12 +789,14 @@ class Chargemanager_charges_model extends App_Model
                 ];
             }
 
-            // Prepare invoice update data
+            // Prepare minimal invoice update data to avoid warnings
             $invoice_update_data = [];
+            $fields_updated = [];
 
             // Update due date if changed
             if ($updated_charge->due_date != $previous_charge->due_date) {
                 $invoice_update_data['duedate'] = $updated_charge->due_date;
+                $fields_updated[] = 'duedate';
             }
 
             // Update amounts if value changed
@@ -785,6 +804,7 @@ class Chargemanager_charges_model extends App_Model
                 $new_value = floatval($updated_charge->value);
                 $invoice_update_data['subtotal'] = $new_value;
                 $invoice_update_data['total'] = $new_value;
+                $fields_updated[] = 'amounts';
             }
 
             // Update invoice items if description or value changed
@@ -817,13 +837,16 @@ class Chargemanager_charges_model extends App_Model
 
                     $this->db->where('id', $item->id);
                     $this->db->update(db_prefix() . 'itemable', $item_update_data);
+                    $fields_updated[] = 'items';
                 }
             }
 
-            // Update invoice if there's data to update
+            // Update invoice only if there are changes to make
             if (!empty($invoice_update_data)) {
-                $updated = $this->invoices_model->update($invoice_update_data, $updated_charge->perfex_invoice_id);
-                
+                // Use direct database update to avoid validation issues
+                $this->db->where('id', $updated_charge->perfex_invoice_id);
+                $updated = $this->db->update(db_prefix() . 'invoices', $invoice_update_data);
+
                 if (!$updated) {
                     throw new Exception('Failed to update related invoice');
                 }
@@ -835,7 +858,7 @@ class Chargemanager_charges_model extends App_Model
                 'success' => true,
                 'message' => 'Related invoice updated successfully',
                 'invoice_id' => $updated_charge->perfex_invoice_id,
-                'updated_fields' => array_keys($invoice_update_data)
+                'updated_fields' => $fields_updated
             ];
 
         } catch (Exception $e) {

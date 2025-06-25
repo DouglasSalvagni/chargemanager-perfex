@@ -48,9 +48,17 @@
                                         break;
                                 }
                                 ?>
-                                <span class="label <?php echo $status_class; ?> label-lg">
-                                    <?php echo $status_text; ?>
-                                </span>
+                                <div class="pull-right">
+                                    <span class="label <?php echo $status_class; ?> label-lg">
+                                        <?php echo $status_text; ?>
+                                    </span>
+                                    <?php if (has_permission('chargemanager', '', 'edit') && !in_array($billing_group->status, ['completed', 'cancelled'])): ?>
+                                        <a href="<?php echo admin_url('chargemanager/billing_groups/edit/' . $billing_group->id); ?>" 
+                                           class="btn btn-info btn-sm" style="margin-left: 10px;">
+                                            <i class="fa fa-edit"></i> <?php echo _l('edit'); ?>
+                                        </a>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                         </div>
                     </div>

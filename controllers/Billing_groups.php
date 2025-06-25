@@ -539,4 +539,472 @@ class Billing_groups extends AdminController
                 return 'default';
         }
     }
+
+    /**
+     * Edit billing group page
+     */
+    public function edit($id)
+    {
+        if (!has_permission('chargemanager', '', 'edit')) {
+            access_denied('chargemanager edit');
+        }
+
+        $billing_group = $this->chargemanager_billing_groups_model->get_with_relationships($id);
+        
+        if (!$billing_group) {
+            show_404();
+        }
+
+        // Check if billing group can be edited
+        if (in_array($billing_group->status, ['completed', 'cancelled'])) {
+            set_alert('warning', _l('chargemanager_billing_group_cannot_be_edited'));
+            redirect(admin_url('chargemanager/billing_groups/view/' . $id));
+            return;
+        }
+
+        // Get client data
+        $this->load->model('clients_model');
+        $client = $this->clients_model->get($billing_group->client_id);
+        
+        // Get contract data
+        $contract = null;
+        if ($billing_group->contract_id) {
+            $this->db->where('id', $billing_group->contract_id);
+            $contract = $this->db->get(db_prefix() . 'contracts')->row();
+        }
+
+        // Prepare charges data
+        $charges = !empty($billing_group->charges) ? $billing_group->charges : [];
+        
+        // Calculate totals
+        $total_paid = 0;
+        $pending_charges = [];
+        foreach ($charges as $charge) {
+            if ($charge->status === 'received' || $charge->status === 'paid') {
+                $total_paid += floatval($charge->paid_amount ?: $charge->value);
+            } else {
+                $pending_charges[] = $charge;
+            }
+        }
+
+        $data = [
+            'billing_group' => $billing_group,
+            'client' => $client,
+            'contract' => $contract,
+            'charges' => $charges,
+            'pending_charges' => $pending_charges,
+            'total_paid' => $total_paid,
+            'title' => _l('chargemanager_edit_billing_group')
+        ];
+        
+        $this->load->view('admin/billing_groups/edit', $data);
+    }
+
+    /**
+     * Add new charge to billing group via AJAX
+     */
+    public function add_charge()
+    {
+        if (!$this->input->is_ajax_request()) {
+            show_404();
+        }
+
+        if (!has_permission('chargemanager', '', 'create')) {
+            echo json_encode(['success' => false, 'message' => _l('access_denied')]);
+            return;
+        }
+
+        $billing_group_id = $this->input->post('billing_group_id');
+        $charge_data = $this->input->post();
+
+        try {
+            // Validate billing group
+            $billing_group = $this->chargemanager_billing_groups_model->get($billing_group_id);
+            if (!$billing_group) {
+                throw new Exception('Billing group not found');
+            }
+
+            // Check if billing group can be edited
+            if (in_array($billing_group->status, ['completed', 'cancelled'])) {
+                throw new Exception('Cannot add charges to completed or cancelled billing group');
+            }
+
+            // Validate charge data
+            $validation_errors = [];
+            
+            if (empty($charge_data['value']) || !is_numeric($charge_data['value']) || floatval($charge_data['value']) <= 0) {
+                $validation_errors[] = _l('chargemanager_error_invalid_amount');
+            }
+            
+            if (empty($charge_data['due_date'])) {
+                $validation_errors[] = _l('chargemanager_error_due_date_required');
+            } elseif ($charge_data['due_date'] < date('Y-m-d')) {
+                $validation_errors[] = _l('chargemanager_error_due_date_past');
+            }
+            
+            if (empty($charge_data['billing_type']) || !in_array($charge_data['billing_type'], ['BOLETO', 'PIX', 'CREDIT_CARD'])) {
+                $validation_errors[] = _l('chargemanager_error_invalid_billing_type');
+            }
+
+            if (!empty($validation_errors)) {
+                throw new Exception(implode('<br>', $validation_errors));
+            }
+
+            // Load Gateway Manager
+            $this->load->library('chargemanager/Gateway_manager');
+
+            // Create charge in gateway
+            $gateway_charge_data = [
+                'billing_group_id' => $billing_group_id,
+                'client_id' => $billing_group->client_id,
+                'value' => floatval($charge_data['value']),
+                'due_date' => $charge_data['due_date'],
+                'billing_type' => $charge_data['billing_type'],
+                'description' => $charge_data['description'] ?: 'Nova cobrança - Billing Group #' . $billing_group_id,
+                'gateway' => 'asaas'
+            ];
+            
+            $gateway_result = $this->gateway_manager->create_charge($gateway_charge_data);
+            
+            if (!$gateway_result['success']) {
+                throw new Exception('Erro ao criar cobrança no gateway: ' . $gateway_result['message']);
+            }
+
+            // Save charge to local database
+            $local_charge_data = [
+                'gateway_charge_id' => $gateway_result['charge_id'],
+                'gateway' => 'asaas',
+                'billing_group_id' => $billing_group_id,
+                'client_id' => $billing_group->client_id,
+                'value' => floatval($charge_data['value']),
+                'due_date' => $charge_data['due_date'],
+                'billing_type' => $charge_data['billing_type'],
+                'status' => 'pending',
+                'invoice_url' => $gateway_result['invoice_url'] ?? null,
+                'barcode' => $gateway_result['barcode'] ?? null,
+                'pix_code' => $gateway_result['pix_code'] ?? null,
+                'description' => $charge_data['description'] ?: 'Nova cobrança - Billing Group #' . $billing_group_id
+            ];
+
+            $local_charge_id = $this->chargemanager_charges_model->create($local_charge_data);
+            
+            if (!$local_charge_id) {
+                throw new Exception('Erro ao salvar cobrança no banco de dados');
+            }
+
+            // Generate individual invoice
+            $invoice_result = $this->chargemanager_charges_model->generate_individual_invoice($local_charge_id);
+            
+            if (!$invoice_result['success']) {
+                log_activity('ChargeManager Warning: Failed to generate invoice for new charge #' . $local_charge_id . ': ' . $invoice_result['message']);
+            }
+
+            // Update billing group total amount
+            $this->db->set('total_amount', 'total_amount + ' . floatval($charge_data['value']), false);
+            $this->db->set('updated_at', date('Y-m-d H:i:s'));
+            $this->db->where('id', $billing_group_id);
+            $this->db->update(db_prefix() . 'chargemanager_billing_groups');
+
+            // Refresh billing group status
+            $this->chargemanager_billing_groups_model->refresh_status($billing_group_id);
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Cobrança adicionada com sucesso',
+                'charge_id' => $local_charge_id,
+                'invoice_generated' => $invoice_result['success'] ?? false
+            ]);
+
+        } catch (Exception $e) {
+            log_activity('ChargeManager Error: ' . $e->getMessage());
+            echo json_encode([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Edit existing charge via AJAX
+     */
+    public function edit_charge()
+    {
+        if (!$this->input->is_ajax_request()) {
+            show_404();
+        }
+
+        if (!has_permission('chargemanager', '', 'edit')) {
+            echo json_encode(['success' => false, 'message' => _l('access_denied')]);
+            return;
+        }
+
+        $charge_id = $this->input->post('charge_id');
+        $charge_data = $this->input->post();
+
+        try {
+            // Get charge
+            $charge = $this->chargemanager_charges_model->get($charge_id);
+            if (!$charge) {
+                throw new Exception('Charge not found');
+            }
+
+            // Check if charge can be edited
+            if (in_array($charge->status, ['paid', 'received', 'cancelled'])) {
+                throw new Exception('Cannot edit charge with status: ' . $charge->status);
+            }
+
+            // Validate charge data
+            $validation_errors = [];
+            
+            if (isset($charge_data['value']) && (!is_numeric($charge_data['value']) || floatval($charge_data['value']) <= 0)) {
+                $validation_errors[] = _l('chargemanager_error_invalid_amount');
+            }
+            
+            if (isset($charge_data['due_date']) && empty($charge_data['due_date'])) {
+                $validation_errors[] = _l('chargemanager_error_due_date_required');
+            }
+            
+            if (isset($charge_data['billing_type']) && !in_array($charge_data['billing_type'], ['BOLETO', 'PIX', 'CREDIT_CARD'])) {
+                $validation_errors[] = _l('chargemanager_error_invalid_billing_type');
+            }
+
+            if (!empty($validation_errors)) {
+                throw new Exception(implode('<br>', $validation_errors));
+            }
+
+            // Prepare update data
+            $update_data = [];
+            $gateway_update_data = [];
+            
+            if (isset($charge_data['value']) && $charge_data['value'] != $charge->value) {
+                $update_data['value'] = floatval($charge_data['value']);
+                $gateway_update_data['value'] = floatval($charge_data['value']);
+            }
+            
+            if (isset($charge_data['due_date']) && $charge_data['due_date'] != $charge->due_date) {
+                $update_data['due_date'] = $charge_data['due_date'];
+                $gateway_update_data['dueDate'] = $charge_data['due_date'];
+            }
+            
+            if (isset($charge_data['billing_type']) && $charge_data['billing_type'] != $charge->billing_type) {
+                $update_data['billing_type'] = $charge_data['billing_type'];
+                $gateway_update_data['billingType'] = $charge_data['billing_type'];
+            }
+
+            if (isset($charge_data['description'])) {
+                $update_data['description'] = $charge_data['description'];
+                $gateway_update_data['description'] = $charge_data['description'];
+            }
+
+            if (empty($update_data)) {
+                throw new Exception('Nenhuma alteração detectada');
+            }
+
+            // Update charge in gateway first
+            if (!empty($gateway_update_data)) {
+                // Load Gateway Factory directly
+                $gateway_factory_path = FCPATH . 'modules/chargemanager/libraries/payment_gateways/Gateway_factory.php';
+                if (file_exists($gateway_factory_path)) {
+                    require_once $gateway_factory_path;
+                    $gateway_instance = Gateway_factory::create('asaas');
+                    
+                    if ($gateway_instance) {
+                        $gateway_result = $gateway_instance->update_charge($charge->gateway_charge_id, $gateway_update_data);
+                        
+                        if (!$gateway_result['success']) {
+                            throw new Exception('Erro ao atualizar cobrança no gateway: ' . $gateway_result['message']);
+                        }
+                    }
+                }
+            }
+
+            // Update charge locally using the model's enhanced update method
+            $options = ['allow_past_due_date' => true]; // Allow past due dates in editing
+            $result = $this->chargemanager_charges_model->update($charge_id, $update_data, $options);
+
+            if (!$result['success']) {
+                throw new Exception($result['message']);
+            }
+
+            // Update billing group total if value changed
+            if (isset($update_data['value'])) {
+                $value_difference = $update_data['value'] - $charge->value;
+                $this->db->set('total_amount', 'total_amount + ' . $value_difference, false);
+                $this->db->set('updated_at', date('Y-m-d H:i:s'));
+                $this->db->where('id', $charge->billing_group_id);
+                $this->db->update(db_prefix() . 'chargemanager_billing_groups');
+            }
+
+            // Refresh billing group status
+            if ($charge->billing_group_id) {
+                log_activity('ChargeManager Debug: Refreshing billing group status');
+                
+                try {
+                    $this->chargemanager_billing_groups_model->refresh_status($charge->billing_group_id);
+                    log_activity('ChargeManager Debug: Billing group status refreshed successfully');
+                } catch (Exception $status_exception) {
+                    // Check if it's the dateupdated error and log it specifically
+                    if (strpos($status_exception->getMessage(), 'dateupdated') !== false) {
+                        log_activity('ChargeManager Warning: dateupdated field error during status refresh - this is likely from an external hook/trigger: ' . $status_exception->getMessage());
+                    } else {
+                        log_activity('ChargeManager Warning: Failed to refresh billing group status: ' . $status_exception->getMessage());
+                    }
+                }
+            }
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Cobrança atualizada com sucesso',
+                'updated_fields' => array_keys($update_data),
+                'invoice_updated' => $result['invoice_updated'] ?? false
+            ]);
+
+        } catch (Exception $e) {
+            log_activity('ChargeManager Error: ' . $e->getMessage());
+            echo json_encode([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Delete charge via AJAX
+     */
+    public function delete_charge()
+    {
+        if (!$this->input->is_ajax_request()) {
+            show_404();
+        }
+
+        if (!has_permission('chargemanager', '', 'delete')) {
+            echo json_encode(['success' => false, 'message' => _l('access_denied')]);
+            return;
+        }
+
+        $charge_id = $this->input->post('charge_id');
+
+        try {
+            // Get charge
+            $charge = $this->chargemanager_charges_model->get($charge_id);
+            if (!$charge) {
+                throw new Exception('Charge not found');
+            }
+
+            // Check if charge can be deleted
+            if (in_array($charge->status, ['paid', 'received'])) {
+                throw new Exception('Cannot delete paid charge');
+            }
+
+            // Cancel charge in gateway first
+            if (!empty($charge->gateway_charge_id)) {
+                // Load Gateway Factory directly
+                $gateway_factory_path = FCPATH . 'modules/chargemanager/libraries/payment_gateways/Gateway_factory.php';
+                if (file_exists($gateway_factory_path)) {
+                    require_once $gateway_factory_path;
+                    $gateway_instance = Gateway_factory::create('asaas');
+                    
+                    if ($gateway_instance) {
+                        $gateway_result = $gateway_instance->cancel_charge($charge->gateway_charge_id);
+                        
+                        if (!$gateway_result['success']) {
+                            log_activity('ChargeManager Warning: Failed to cancel charge in gateway: ' . $gateway_result['message']);
+                        }
+                    }
+                }
+            }
+
+            // Cancel related invoice if exists
+            if (!empty($charge->perfex_invoice_id)) {
+                try {
+                    $this->load->model('invoices_model');
+                    $invoice = $this->invoices_model->get($charge->perfex_invoice_id);
+                    
+                    if ($invoice && $invoice->status != 2) { // Not paid
+                        // Mark invoice as cancelled using the correct field name
+                        $this->db->where('id', $charge->perfex_invoice_id);
+                        $invoice_updated = $this->db->update(db_prefix() . 'invoices', [
+                            'status' => 5 // Cancelled status
+                        ]);
+                        
+                        if (!$invoice_updated) {
+                            log_activity('ChargeManager Warning: Failed to cancel invoice #' . $charge->perfex_invoice_id . ' for charge #' . $charge_id);
+                        }
+                    }
+                } catch (Exception $invoice_exception) {
+                    // Log invoice cancellation error but don't fail the charge cancellation
+                    log_activity('ChargeManager Warning: Error cancelling invoice #' . $charge->perfex_invoice_id . ': ' . $invoice_exception->getMessage());
+                }
+            }
+
+            // Update charge status to cancelled
+            $this->db->where('id', $charge_id);
+            $charge_updated = $this->db->update(db_prefix() . 'chargemanager_charges', [
+                'status' => 'cancelled',
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+
+            if (!$charge_updated) {
+                throw new Exception('Failed to update charge status to cancelled');
+            }
+
+            // Update billing group total amount
+            $this->db->set('total_amount', 'total_amount - ' . floatval($charge->value), false);
+            $this->db->set('updated_at', date('Y-m-d H:i:s'));
+            $this->db->where('id', $charge->billing_group_id);
+            $billing_group_updated = $this->db->update(db_prefix() . 'chargemanager_billing_groups');
+
+            if (!$billing_group_updated) {
+                log_activity('ChargeManager Warning: Failed to update billing group total for group #' . $charge->billing_group_id);
+            }
+
+            log_activity('ChargeManager: Charge #' . $charge_id . ' cancelled successfully');
+
+            // Success response - separate from refresh_status to ensure success even if refresh fails
+            $response = [
+                'success' => true,
+                'message' => 'Cobrança cancelada com sucesso'
+            ];
+
+            // Try to refresh billing group status as a final step
+            // Don't let errors here affect the main operation
+            if ($charge->billing_group_id) {
+                try {
+                    $this->chargemanager_billing_groups_model->refresh_status($charge->billing_group_id);
+                } catch (Exception $status_exception) {
+                    // Check if it's the dateupdated error and log it specifically
+                    if (strpos($status_exception->getMessage(), 'dateupdated') !== false) {
+                        log_activity('ChargeManager Warning: dateupdated field error during status refresh - this is likely from an external hook/trigger: ' . $status_exception->getMessage());
+                    } else {
+                        log_activity('ChargeManager Warning: Failed to refresh billing group status: ' . $status_exception->getMessage());
+                    }
+                }
+            }
+
+            echo json_encode($response);
+
+        } catch (Exception $e) {
+            // Special handling for the dateupdated error - log but don't fail if the main operation succeeded
+            if (strpos($e->getMessage(), 'dateupdated') !== false) {
+                log_activity('ChargeManager Warning: dateupdated field error caught - this appears to be from an external hook/trigger. The charge cancellation was likely successful despite this error: ' . $e->getMessage());
+                
+                // Check if the charge was actually cancelled
+                $updated_charge = $this->chargemanager_charges_model->get($charge_id);
+                if ($updated_charge && $updated_charge->status == 'cancelled') {
+                    log_activity('ChargeManager: Charge #' . $charge_id . ' was successfully cancelled despite dateupdated error');
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'Cobrança cancelada com sucesso (warning: erro externo ignorado)'
+                    ]);
+                    return;
+                }
+            }
+            
+            log_activity('ChargeManager Error: ' . $e->getMessage());
+            echo json_encode([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
 } 
