@@ -282,6 +282,12 @@ $(document).ready(function() {
             errors.push('Please select a contract');
         }
         
+        // Sale agent validation (opcional)
+        var saleAgent = $('#sale_agent').val();
+        if (saleAgent && !$.isNumeric(saleAgent)) {
+            errors.push('Invalid sale agent selected');
+        }
+        
         // Charges validation
         var charges = $('.charge-item');
         if (charges.length === 0) {

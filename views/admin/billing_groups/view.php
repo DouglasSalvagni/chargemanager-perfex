@@ -100,6 +100,30 @@
                                         </td>
                                     </tr>
                                     <tr>
+                                        <td><strong><?php echo _l('chargemanager_sale_agent'); ?>:</strong></td>
+                                        <td>
+                                            <?php if (!empty($billing_group->sale_agent_info)): ?>
+                                                <?php
+                                                // Check if this was the original lead agent
+                                                $CI = &get_instance();
+                                                $CI->load->model('chargemanager/chargemanager_billing_groups_model');
+                                                $original_lead_staff = $CI->chargemanager_billing_groups_model->get_client_original_lead_staff($billing_group->client_id);
+                                                $is_original_lead_agent = ($original_lead_staff && $original_lead_staff == $billing_group->sale_agent_info->staffid);
+                                                ?>
+                                                <a href="<?php echo admin_url('staff/profile/' . $billing_group->sale_agent_info->staffid); ?>">
+                                                    <?php echo $billing_group->sale_agent_info->firstname . ' ' . $billing_group->sale_agent_info->lastname; ?>
+                                                </a>
+                                                <?php if ($is_original_lead_agent): ?>
+                                                    <br><small class="text-muted">
+                                                        <i class="fa fa-info-circle"></i> <?php echo _l('chargemanager_original_lead_agent'); ?>
+                                                    </small>
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                <span class="text-muted"><?php echo _l('chargemanager_no_sale_agent'); ?></span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                    <tr>
                                         <td><strong><?php echo _l('chargemanager_total_charges'); ?>:</strong></td>
                                         <td><?php echo count($charges); ?></td>
                                     </tr>

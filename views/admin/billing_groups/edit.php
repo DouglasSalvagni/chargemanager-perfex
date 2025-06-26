@@ -32,6 +32,58 @@
                     </div>
                 </div>
 
+                <!-- Basic Information -->
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h5 class="panel-title">
+                            <i class="fa fa-info-circle"></i> <?php echo _l('chargemanager_basic_information'); ?>
+                        </h5>
+                    </div>
+                    <div class="panel-body">
+                        <?php echo form_open(admin_url('chargemanager/billing_groups/update/' . $billing_group->id), ['id' => 'billing-group-basic-form']); ?>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="sale_agent"><?php echo _l('chargemanager_sale_agent'); ?></label>
+                                    <select name="sale_agent" id="sale_agent" class="form-control selectpicker" 
+                                            data-live-search="true">
+                                        <option value=""><?php echo _l('chargemanager_no_sale_agent'); ?></option>
+                                        <?php foreach($staff_members as $staff): ?>
+                                            <option value="<?php echo $staff['staffid']; ?>" 
+                                                    <?php echo ($billing_group->sale_agent == $staff['staffid']) ? 'selected' : ''; ?>>
+                                                <?php echo $staff['firstname'] . ' ' . $staff['lastname']; ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="status"><?php echo _l('chargemanager_status'); ?></label>
+                                    <select name="status" id="status" class="form-control">
+                                        <option value="open" <?php echo ($billing_group->status == 'open') ? 'selected' : ''; ?>><?php echo _l('chargemanager_status_open'); ?></option>
+                                        <option value="partial" <?php echo ($billing_group->status == 'partial') ? 'selected' : ''; ?>><?php echo _l('chargemanager_status_partial'); ?></option>
+                                        <option value="completed" <?php echo ($billing_group->status == 'completed') ? 'selected' : ''; ?>><?php echo _l('chargemanager_status_completed'); ?></option>
+                                        <option value="overdue" <?php echo ($billing_group->status == 'overdue') ? 'selected' : ''; ?>><?php echo _l('chargemanager_status_overdue'); ?></option>
+                                        <option value="cancelled" <?php echo ($billing_group->status == 'cancelled') ? 'selected' : ''; ?>><?php echo _l('chargemanager_status_cancelled'); ?></option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>&nbsp;</label>
+                                    <div>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fa fa-save"></i> <?php echo _l('chargemanager_update_basic_info'); ?>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <?php echo form_close(); ?>
+                    </div>
+                </div>
+
                 <!-- Summary Cards -->
                 <div class="row">
                     <div class="col-md-3">

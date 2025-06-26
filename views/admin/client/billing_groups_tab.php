@@ -72,6 +72,43 @@ render_datatable($table_data, 'billing-groups', ['table-responsive']);
                 </div>
             </div>
 
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="sale_agent"><?php echo _l('chargemanager_sale_agent'); ?></label>
+                        <select name="sale_agent" id="sale_agent" class="form-control selectpicker" 
+                                data-live-search="true" data-none-selected-text="<?php echo _l('chargemanager_select_sale_agent'); ?>">
+                            <option value=""><?php echo _l('chargemanager_no_sale_agent'); ?></option>
+                            <?php 
+                            // Load staff members
+                            $CI = &get_instance();
+                            $CI->load->model('staff_model');
+                            $CI->db->where('active', 1);
+                            $CI->db->order_by('firstname, lastname', 'ASC');
+                            $staff_members = $CI->db->get(db_prefix() . 'staff')->result();
+                            
+                            // Get the original lead staff for pre-selection
+                            $CI->load->model('chargemanager/chargemanager_billing_groups_model');
+                            $original_lead_staff = $CI->chargemanager_billing_groups_model->get_client_original_lead_staff($client_id);
+                            
+                            foreach($staff_members as $staff): 
+                                $selected = ($original_lead_staff && $original_lead_staff == $staff->staffid) ? 'selected' : '';
+                            ?>
+                                <option value="<?php echo $staff->staffid; ?>" <?php echo $selected; ?>>
+                                    <?php echo $staff->firstname . ' ' . $staff->lastname; ?>
+                                    <?php if ($original_lead_staff && $original_lead_staff == $staff->staffid): ?>
+                                        (<?php echo _l('chargemanager_original_lead_agent'); ?>)
+                                    <?php endif; ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <!-- Placeholder for future fields -->
+                </div>
+            </div>
+
             <div id="charges-container" class="hide">
                 <hr />
                 <h5><?php echo _l('chargemanager_charges'); ?></h5>

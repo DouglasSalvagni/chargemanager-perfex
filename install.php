@@ -33,6 +33,7 @@ if (!$CI->db->table_exists($db_prefix . 'chargemanager_billing_groups')) {
         `id` INT(11) NOT NULL AUTO_INCREMENT,
         `client_id` INT(11) NOT NULL,
         `contract_id` INT(11) NOT NULL,
+        `sale_agent` INT(11) NULL DEFAULT NULL,
         `status` VARCHAR(50) NOT NULL DEFAULT 'open',
         `total_amount` DECIMAL(15,2) NOT NULL,
         `created_at` DATETIME NOT NULL,
@@ -40,8 +41,27 @@ if (!$CI->db->table_exists($db_prefix . 'chargemanager_billing_groups')) {
         PRIMARY KEY (`id`),
         KEY `client_id` (`client_id`),
         KEY `contract_id` (`contract_id`),
+        KEY `sale_agent` (`sale_agent`),
         KEY `status` (`status`)
     ) ENGINE=InnoDB DEFAULT CHARSET=" . $charset . ";");
+} else {
+    // Check if sale_agent column exists and add it if missing
+    $fields = $CI->db->field_data($db_prefix . 'chargemanager_billing_groups');
+    $has_sale_agent = false;
+    
+    foreach ($fields as $field) {
+        if ($field->name === 'sale_agent') {
+            $has_sale_agent = true;
+            break;
+        }
+    }
+    
+    if (!$has_sale_agent) {
+        $CI->db->query('ALTER TABLE `' . $db_prefix . 'chargemanager_billing_groups` 
+                       ADD COLUMN `sale_agent` INT(11) NULL DEFAULT NULL AFTER `contract_id`,
+                       ADD KEY `sale_agent` (`sale_agent`)');
+        log_activity('ChargeManager: Added sale_agent column to billing_groups table');
+    }
 }
 
 // 2. chargemanager_charges - Conforme relatório

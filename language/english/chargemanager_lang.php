@@ -224,4 +224,25 @@ $lang['chargemanager_error_loading_contracts'] = 'Error loading contracts';
 $lang['chargemanager_contract_id_required'] = 'Contract ID is required';
 $lang['chargemanager_contract_not_found'] = 'Contract not found';
 $lang['chargemanager_contract_invalid'] = 'Invalid contract (not signed, expired or no value)';
-$lang['chargemanager_error_loading_contract'] = 'Error loading contract details'; 
+$lang['chargemanager_error_loading_contract'] = 'Error loading contract details';
+
+// Sale Agent related translations
+$lang['chargemanager_sale_agent'] = 'Sale Agent';
+$lang['chargemanager_select_sale_agent'] = 'Select Sale Agent';
+$lang['chargemanager_no_sale_agent'] = 'No Sale Agent';
+$lang['chargemanager_sale_agent_required'] = 'Sale Agent is required';
+$lang['chargemanager_invalid_sale_agent'] = 'Invalid Sale Agent selected';
+$lang['chargemanager_sale_agent_info'] = 'Sale Agent Information';
+$lang['chargemanager_assigned_to'] = 'Assigned to';
+
+// Additional translations for edit view
+$lang['chargemanager_basic_information'] = 'Basic Information';
+$lang['chargemanager_update_basic_info'] = 'Update Basic Info';
+$lang['chargemanager_status_open'] = 'Open';
+$lang['chargemanager_status_partial'] = 'Partial';
+$lang['chargemanager_status_completed'] = 'Completed';
+$lang['chargemanager_status_overdue'] = 'Overdue';
+$lang['chargemanager_status_cancelled'] = 'Cancelled';
+
+// Original Lead Agent
+$lang['chargemanager_original_lead_agent'] = 'Original Lead Agent'; 

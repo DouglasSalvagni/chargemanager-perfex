@@ -232,10 +232,28 @@ class Billing_groups extends AdminController
             // Load Gateway Manager
             $this->load->library('chargemanager/Gateway_manager');
 
+            // Validate sale_agent if provided
+            $sale_agent = null;
+            if (!empty($data['sale_agent']) && is_numeric($data['sale_agent'])) {
+                $this->load->model('staff_model');
+                $staff = $this->staff_model->get($data['sale_agent']);
+                if ($staff && $staff->active == 1) {
+                    $sale_agent = $data['sale_agent'];
+                }
+            } else {
+                // If no sale_agent provided, try to get the original lead staff
+                $original_lead_staff = $this->chargemanager_billing_groups_model->get_client_original_lead_staff($data['client_id']);
+                if ($original_lead_staff) {
+                    $sale_agent = $original_lead_staff;
+                    log_activity('ChargeManager: Auto-assigned sale agent #' . $sale_agent . ' from original lead for client #' . $data['client_id']);
+                }
+            }
+
             // Create billing group
             $billing_group_data = [
                 'client_id' => $data['client_id'],
                 'contract_id' => $data['contract_id'],
+                'sale_agent' => $sale_agent,
                 'status' => 'open',
                 'total_amount' => array_sum(array_column($data['charges'], 'amount'))
             ];
@@ -421,6 +439,10 @@ class Billing_groups extends AdminController
         // Preparar dados dos invoices
         $invoices = !empty($billing_group->invoices) ? $billing_group->invoices : [];
         
+        // Get staff list for potential reassignment
+        $this->load->model('staff_model');
+        $data['staff_members'] = $this->staff_model->get('', ['active' => 1]);
+        
         // Buscar activity log se necessário (opcional por enquanto)
         $activity_log = [];
         $this->db->where('perfex_entity_type', 'billing_group');
@@ -598,6 +620,96 @@ class Billing_groups extends AdminController
         ];
         
         $this->load->view('admin/billing_groups/edit', $data);
+    }
+
+    /**
+     * Update billing group basic information
+     */
+    public function update($id)
+    {
+        if (!has_permission('chargemanager', '', 'edit')) {
+            access_denied('chargemanager edit');
+        }
+
+        if (!$this->input->is_ajax_request() && $this->input->server('REQUEST_METHOD') !== 'POST') {
+            redirect(admin_url('chargemanager/billing_groups/view/' . $id));
+        }
+
+        $billing_group = $this->chargemanager_billing_groups_model->get($id);
+        
+        if (!$billing_group) {
+            if ($this->input->is_ajax_request()) {
+                echo json_encode(['success' => false, 'message' => 'Billing group not found']);
+                return;
+            }
+            show_404();
+        }
+
+        $data = $this->input->post();
+        $update_data = [];
+
+        try {
+            // Validate and update sale_agent
+            if (isset($data['sale_agent'])) {
+                if (empty($data['sale_agent'])) {
+                    $update_data['sale_agent'] = null;
+                } elseif (is_numeric($data['sale_agent'])) {
+                    $this->load->model('staff_model');
+                    $staff = $this->staff_model->get($data['sale_agent']);
+                    if ($staff && $staff->active == 1) {
+                        $update_data['sale_agent'] = $data['sale_agent'];
+                    } else {
+                        throw new Exception('Invalid sale agent selected');
+                    }
+                }
+            }
+
+            // Validate and update status
+            if (isset($data['status'])) {
+                $allowed_statuses = ['open', 'partial', 'completed', 'overdue', 'cancelled'];
+                if (in_array($data['status'], $allowed_statuses)) {
+                    $update_data['status'] = $data['status'];
+                } else {
+                    throw new Exception('Invalid status selected');
+                }
+            }
+
+            if (empty($update_data)) {
+                throw new Exception('No valid data to update');
+            }
+
+            // Update billing group
+            $updated = $this->chargemanager_billing_groups_model->update($id, $update_data);
+
+            if (!$updated) {
+                throw new Exception('Failed to update billing group');
+            }
+
+            log_activity('ChargeManager: Billing group #' . $id . ' basic information updated');
+
+            if ($this->input->is_ajax_request()) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Billing group updated successfully'
+                ]);
+            } else {
+                set_alert('success', 'Billing group updated successfully');
+                redirect(admin_url('chargemanager/billing_groups/view/' . $id));
+            }
+
+        } catch (Exception $e) {
+            log_activity('ChargeManager Error updating billing group: ' . $e->getMessage());
+            
+            if ($this->input->is_ajax_request()) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => $e->getMessage()
+                ]);
+            } else {
+                set_alert('danger', $e->getMessage());
+                redirect(admin_url('chargemanager/billing_groups/edit/' . $id));
+            }
+        }
     }
 
     /**
@@ -1006,5 +1118,26 @@ class Billing_groups extends AdminController
                 'message' => $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Get active staff members via AJAX
+     */
+    public function get_staff()
+    {
+        if (!$this->input->is_ajax_request()) {
+            show_404();
+        }
+        
+        if (!has_permission('chargemanager', '', 'create')) {
+            ajax_access_denied();
+        }
+        
+        $this->load->model('staff_model');
+        $this->db->where('active', 1);
+        $this->db->order_by('firstname, lastname', 'ASC');
+        $staff = $this->db->get(db_prefix() . 'staff')->result();
+        
+        echo json_encode($staff);
     }
 } 

@@ -140,7 +140,7 @@ class Chargemanager_billing_groups_model extends App_Model
     }
 
     /**
-     * Get billing group with all relationships
+     * Get billing group with all relationships including sale agent
      * @param int $billing_group_id
      * @return object|null
      */
@@ -166,6 +166,12 @@ class Chargemanager_billing_groups_model extends App_Model
         if (!empty($billing_group->client_id)) {
             $this->db->where('userid', $billing_group->client_id);
             $billing_group->client = $this->db->get(db_prefix() . 'clients')->row();
+        }
+
+        // Get sale agent
+        if (!empty($billing_group->sale_agent)) {
+            $this->load->model('staff_model');
+            $billing_group->sale_agent_info = $this->staff_model->get($billing_group->sale_agent);
         }
 
         // Get invoices for charges (new logic - multiple invoices per billing group)
@@ -487,5 +493,54 @@ class Chargemanager_billing_groups_model extends App_Model
                 'message' => $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Get active staff members for sale agent selection
+     * @return array
+     */
+    public function get_active_staff()
+    {
+        $this->load->model('staff_model');
+        $this->db->where('active', 1);
+        $this->db->order_by('firstname, lastname', 'ASC');
+        return $this->db->get(db_prefix() . 'staff')->result();
+    }
+
+    /**
+     * Get the original lead staff assigned to a client
+     * @param int $client_id
+     * @return int|null Staff ID from the original lead, or null if not found
+     */
+    public function get_client_original_lead_staff($client_id)
+    {
+        if (empty($client_id)) {
+            return null;
+        }
+
+        // First, get the leadid from clients table
+        $this->db->select('leadid');
+        $this->db->where('userid', $client_id);
+        $client = $this->db->get(db_prefix() . 'clients')->row();
+
+        if (!$client || empty($client->leadid)) {
+            return null;
+        }
+
+        // Get the assigned staff from leads table
+        $this->db->select('assigned');
+        $this->db->where('id', $client->leadid);
+        $lead = $this->db->get(db_prefix() . 'leads')->row();
+
+        if (!$lead || empty($lead->assigned)) {
+            return null;
+        }
+
+        // Verify that the staff member is still active
+        $this->db->where('staffid', $lead->assigned);
+        $this->db->where('active', 1);
+        $staff = $this->db->get(db_prefix() . 'staff')->row();
+
+        return $staff ? $lead->assigned : null;
     }
 } 
