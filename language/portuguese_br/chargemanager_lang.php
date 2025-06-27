@@ -71,6 +71,33 @@ $lang['chargemanager_status_completed'] = 'Concluído';
 $lang['chargemanager_status_partial'] = 'Parcial';
 $lang['chargemanager_status_paid'] = 'Pago';
 $lang['chargemanager_status_cancelled'] = 'Cancelado';
+$lang['chargemanager_status_overdue'] = 'Vencido';
+
+// New Granular Status Translations
+$lang['chargemanager_status_completed_exact'] = 'Concluído';
+$lang['chargemanager_status_completed_over'] = 'Concluído (Acima)';
+$lang['chargemanager_status_completed_under'] = 'Concluído (Abaixo)';
+$lang['chargemanager_status_partial_on_track'] = 'Parcial';
+$lang['chargemanager_status_partial_over'] = 'Parcial (Acima)';
+$lang['chargemanager_status_partial_under'] = 'Parcial (Incompleto)';
+$lang['chargemanager_status_overdue_on_track'] = 'Vencido';
+$lang['chargemanager_status_overdue_over'] = 'Vencido (Acima)';
+$lang['chargemanager_status_overdue_under'] = 'Vencido (Incompleto)';
+$lang['chargemanager_status_incomplete'] = 'Incompleto';
+
+// Status descriptions
+$lang['chargemanager_status_desc_completed_exact'] = 'Todas cobranças pagas, valor exato do contrato';
+$lang['chargemanager_status_desc_completed_over'] = 'Todas cobranças pagas, valor acima do contrato';
+$lang['chargemanager_status_desc_completed_under'] = 'Todas cobranças pagas, valor abaixo do contrato';
+$lang['chargemanager_status_desc_partial_on_track'] = 'Algumas cobranças pagas, valor total correto';
+$lang['chargemanager_status_desc_partial_over'] = 'Algumas cobranças pagas, valor total acima do contrato';
+$lang['chargemanager_status_desc_partial_under'] = 'Algumas cobranças pagas, faltam cobranças';
+$lang['chargemanager_status_desc_overdue_on_track'] = 'Cobranças vencidas, valor total correto';
+$lang['chargemanager_status_desc_overdue_over'] = 'Cobranças vencidas, valor acima do contrato';
+$lang['chargemanager_status_desc_overdue_under'] = 'Cobranças vencidas, faltam cobranças';
+$lang['chargemanager_status_desc_open'] = 'Aguardando pagamentos';
+$lang['chargemanager_status_desc_incomplete'] = 'Faltam cobranças para atingir valor do contrato';
+$lang['chargemanager_status_desc_cancelled'] = 'Todas cobranças canceladas';
 
 // Actions
 $lang['chargemanager_actions'] = 'Ações';
@@ -262,4 +289,26 @@ $lang['chargemanager_edit_charge'] = 'Editar Cobrança';
 $lang['chargemanager_original_lead_agent'] = 'Agente de Lead Original';
 
 // Admin Only
-$lang['admin_only'] = 'Apenas Administradores'; 
+$lang['admin_only'] = 'Apenas Administradores';
+
+// Status Legend Translations
+$lang['chargemanager_status_legend'] = 'Legenda de Status';
+$lang['chargemanager_show_legend'] = 'Mostrar Legenda';
+$lang['chargemanager_hide_legend'] = 'Ocultar Legenda';
+$lang['chargemanager_completed_statuses'] = 'Status Concluídos';
+$lang['chargemanager_partial_statuses'] = 'Status Parciais';
+$lang['chargemanager_problem_statuses'] = 'Status Problemáticos';
+$lang['chargemanager_basic_statuses'] = 'Status Básicos';
+$lang['chargemanager_value_indicators'] = 'Indicadores de Valor';
+$lang['chargemanager_exact_value'] = 'Valor Exato';
+$lang['chargemanager_exact_value_desc'] = 'Valor das cobranças igual ao valor do contrato';
+$lang['chargemanager_over_value'] = 'Valor Acima';
+$lang['chargemanager_over_value_desc'] = 'Valor das cobranças acima do valor do contrato (renegociação)';
+$lang['chargemanager_under_value'] = 'Valor Abaixo';
+$lang['chargemanager_under_value_desc'] = 'Valor das cobranças abaixo do valor do contrato (incompleto)';
+$lang['chargemanager_editability_rules'] = 'Regras de Edição';
+$lang['chargemanager_editable_statuses'] = 'Status Editáveis';
+$lang['chargemanager_editable_statuses_desc'] = 'Todos os status exceto "Concluído" (valor exato) e "Cancelado" podem ser editados';
+$lang['chargemanager_non_editable_statuses'] = 'Status Não Editáveis';
+$lang['chargemanager_non_editable_statuses_desc'] = 'Apenas "Concluído" (valor exato) e "Cancelado" não podem ser editados';
+$lang['chargemanager_copied_to_clipboard'] = 'Copiado para a área de transferência'; 

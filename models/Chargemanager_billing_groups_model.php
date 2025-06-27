@@ -329,7 +329,7 @@ class Chargemanager_billing_groups_model extends App_Model
     }
 
     /**
-     * Calculate billing group status based on individual charge invoices
+     * Calculate billing group status with enhanced business logic
      * @param int $billing_group_id
      * @return string
      */
@@ -339,51 +339,310 @@ class Chargemanager_billing_groups_model extends App_Model
             return 'open';
         }
 
-        // Get all charges for this billing group
+        // Get billing group and contract data
+        $billing_group = $this->get($billing_group_id);
+        if (!$billing_group) {
+            return 'open';
+        }
+
+        $this->db->where('id', $billing_group->contract_id);
+        $contract = $this->db->get(db_prefix() . 'contracts')->row();
+        $contract_value = $contract ? floatval($contract->contract_value) : 0;
+
+        // Get charges
         $this->load->model('chargemanager_charges_model');
         $charges = $this->chargemanager_charges_model->get_by_billing_group($billing_group_id);
 
         if (empty($charges)) {
-            return 'open';
+            return 'incomplete';
         }
 
-        $total_charges = count($charges);
+        // Calculate charge statistics (EXCLUDING cancelled charges)
+        $active_charges = array_filter($charges, function($charge) {
+            return $charge->status !== 'cancelled';
+        });
+
+        if (empty($active_charges)) {
+            return 'cancelled'; // Only when ALL charges are cancelled
+        }
+
+        $total_active = count($active_charges);
         $paid_charges = 0;
         $overdue_charges = 0;
-        $cancelled_charges = 0;
+        $pending_charges = 0;
+        $active_value = 0;
+        $paid_value = 0;
 
-        foreach ($charges as $charge) {
+        foreach ($active_charges as $charge) {
+            $charge_value = floatval($charge->value);
+            $active_value += $charge_value;
+
             switch ($charge->status) {
                 case 'paid':
+                case 'received':
                     $paid_charges++;
+                    $paid_value += $charge_value;
                     break;
                 case 'overdue':
                     $overdue_charges++;
                     break;
-                case 'cancelled':
-                    $cancelled_charges++;
+                default:
+                    $pending_charges++;
                     break;
             }
         }
 
-        // Determine overall status
-        if ($paid_charges == $total_charges) {
-            return 'completed'; // All charges paid
-        }
+        // Determine value relationship with contract
+        $tolerance = 0.01;
+        $value_comparison = 'exact';
         
-        if ($cancelled_charges == $total_charges) {
-            return 'cancelled'; // All charges cancelled
-        }
-        
-        if ($overdue_charges > 0) {
-            return 'overdue'; // At least one charge is overdue
-        }
-        
-        if ($paid_charges > 0) {
-            return 'partial'; // Some charges paid, some pending
+        if ($active_value > $contract_value + $tolerance) {
+            $value_comparison = 'over';
+        } elseif ($active_value < $contract_value - $tolerance) {
+            $value_comparison = 'under';
         }
 
-        return 'open'; // Default status
+        // Apply status logic with value consideration
+        if ($paid_charges == $total_active) {
+            // All active charges paid
+            switch ($value_comparison) {
+                case 'over':
+                    return 'completed_over';
+                case 'under':
+                    return 'completed_under';
+                default:
+                    return 'completed_exact';
+            }
+        }
+
+        if ($overdue_charges > 0) {
+            // Has overdue charges
+            switch ($value_comparison) {
+                case 'over':
+                    return 'overdue_over';
+                case 'under':
+                    return 'overdue_under';
+                default:
+                    return 'overdue_on_track';
+            }
+        }
+
+        if ($paid_charges > 0) {
+            // Partial payments
+            switch ($value_comparison) {
+                case 'over':
+                    return 'partial_over';
+                case 'under':
+                    return 'partial_under';
+                default:
+                    return 'partial_on_track';
+            }
+        }
+
+        // No payments yet
+        return $value_comparison === 'under' ? 'incomplete' : 'open';
+    }
+
+    /**
+     * Get status configuration for display
+     * @param string $status
+     * @return array
+     */
+    public function get_status_config($status)
+    {
+        $configs = [
+            // Completed statuses
+            'completed_exact' => [
+                'label' => 'Concluído',
+                'class' => 'label-success',
+                'icon' => 'fa-check-circle',
+                'editable' => false,
+                'description' => 'Todas cobranças pagas, valor exato do contrato'
+            ],
+            'completed_over' => [
+                'label' => 'Concluído (Acima)',
+                'class' => 'label-success',
+                'icon' => 'fa-arrow-up',
+                'editable' => true,
+                'description' => 'Todas cobranças pagas, valor acima do contrato'
+            ],
+            'completed_under' => [
+                'label' => 'Concluído (Abaixo)',
+                'class' => 'label-warning',
+                'icon' => 'fa-arrow-down',
+                'editable' => true,
+                'description' => 'Todas cobranças pagas, valor abaixo do contrato'
+            ],
+            
+            // Partial statuses
+            'partial_on_track' => [
+                'label' => 'Parcial',
+                'class' => 'label-info',
+                'icon' => 'fa-clock-o',
+                'editable' => true,
+                'description' => 'Algumas cobranças pagas, valor total correto'
+            ],
+            'partial_over' => [
+                'label' => 'Parcial (Acima)',
+                'class' => 'label-info',
+                'icon' => 'fa-arrow-up',
+                'editable' => true,
+                'description' => 'Algumas cobranças pagas, valor total acima do contrato'
+            ],
+            'partial_under' => [
+                'label' => 'Parcial (Incompleto)',
+                'class' => 'label-warning',
+                'icon' => 'fa-exclamation-triangle',
+                'editable' => true,
+                'description' => 'Algumas cobranças pagas, faltam cobranças'
+            ],
+            
+            // Problem statuses
+            'overdue_on_track' => [
+                'label' => 'Vencido',
+                'class' => 'label-danger',
+                'icon' => 'fa-exclamation-circle',
+                'editable' => true,
+                'description' => 'Cobranças vencidas, valor total correto'
+            ],
+            'overdue_over' => [
+                'label' => 'Vencido (Acima)',
+                'class' => 'label-danger',
+                'icon' => 'fa-exclamation-circle',
+                'editable' => true,
+                'description' => 'Cobranças vencidas, valor acima do contrato'
+            ],
+            'overdue_under' => [
+                'label' => 'Vencido (Incompleto)',
+                'class' => 'label-danger',
+                'icon' => 'fa-exclamation-circle',
+                'editable' => true,
+                'description' => 'Cobranças vencidas, faltam cobranças'
+            ],
+            
+            // Basic statuses
+            'open' => [
+                'label' => 'Aberto',
+                'class' => 'label-default',
+                'icon' => 'fa-folder-open',
+                'editable' => true,
+                'description' => 'Aguardando pagamentos'
+            ],
+            'incomplete' => [
+                'label' => 'Incompleto',
+                'class' => 'label-warning',
+                'icon' => 'fa-exclamation-triangle',
+                'editable' => true,
+                'description' => 'Faltam cobranças para atingir valor do contrato'
+            ],
+            'cancelled' => [
+                'label' => 'Cancelado',
+                'class' => 'label-danger',
+                'icon' => 'fa-times-circle',
+                'editable' => false,
+                'description' => 'Todas cobranças canceladas'
+            ],
+            
+            // Legacy statuses (backwards compatibility)
+            'completed' => [
+                'label' => 'Concluído',
+                'class' => 'label-success',
+                'icon' => 'fa-check-circle',
+                'editable' => false,
+                'description' => 'Concluído (status legado)'
+            ],
+            'partial' => [
+                'label' => 'Parcial',
+                'class' => 'label-info',
+                'icon' => 'fa-clock-o',
+                'editable' => true,
+                'description' => 'Parcial (status legado)'
+            ],
+            'overdue' => [
+                'label' => 'Vencido',
+                'class' => 'label-danger',
+                'icon' => 'fa-exclamation-circle',
+                'editable' => true,
+                'description' => 'Vencido (status legado)'
+            ]
+        ];
+
+        return $configs[$status] ?? $configs['open'];
+    }
+
+    /**
+     * Check if billing group can be edited based on status
+     * @param string $status
+     * @return bool
+     */
+    public function can_edit_billing_group($status)
+    {
+        $status_config = $this->get_status_config($status);
+        return $status_config['editable'];
+    }
+
+    /**
+     * Validate billing group completeness before status calculation
+     * @param int $billing_group_id
+     * @return array
+     */
+    public function validate_billing_group_completeness($billing_group_id)
+    {
+        $billing_group = $this->get($billing_group_id);
+        if (!$billing_group) {
+            return ['valid' => false, 'message' => 'Billing group not found'];
+        }
+
+        // Get contract value
+        $this->db->where('id', $billing_group->contract_id);
+        $contract = $this->db->get(db_prefix() . 'contracts')->row();
+        $contract_value = $contract ? floatval($contract->contract_value) : 0;
+
+        // Get active charges value
+        $this->load->model('chargemanager_charges_model');
+        $charges = $this->chargemanager_charges_model->get_by_billing_group($billing_group_id);
+        $active_value = 0;
+        
+        foreach ($charges as $charge) {
+            if ($charge->status !== 'cancelled') {
+                $active_value += floatval($charge->value);
+            }
+        }
+
+        $difference = abs($active_value - $contract_value);
+        $tolerance = 0.01;
+
+        return [
+            'valid' => $difference <= $tolerance,
+            'contract_value' => $contract_value,
+            'charges_value' => $active_value,
+            'difference' => $difference,
+            'message' => $difference > $tolerance ? 
+                'Billing group incomplete: charges value differs from contract' : 
+                'Billing group is complete'
+        ];
+    }
+
+    /**
+     * Enhanced refresh status with business validations
+     * @param int $billing_group_id
+     * @return bool
+     */
+    public function refresh_status($billing_group_id)
+    {
+        // Calculate new status
+        $new_status = $this->calculate_billing_group_status($billing_group_id);
+        
+        // Additional validation for 'completed_exact' status
+        if ($new_status === 'completed_exact') {
+            $validation = $this->validate_billing_group_completeness($billing_group_id);
+            if (!$validation['valid']) {
+                $new_status = 'incomplete'; // Force incomplete status
+                log_activity('ChargeManager: Prevented incorrect completed_exact status for billing group #' . $billing_group_id);
+            }
+        }
+        
+        return $this->update_status($billing_group_id, $new_status, false);
     }
 
     /**
@@ -428,16 +687,6 @@ class Chargemanager_billing_groups_model extends App_Model
         }
 
         return $summary;
-    }
-
-    /**
-     * Refresh billing group status
-     * @param int $billing_group_id
-     * @return bool
-     */
-    public function refresh_status($billing_group_id)
-    {
-        return $this->update_status($billing_group_id, '', true);
     }
 
     /**
@@ -542,5 +791,43 @@ class Chargemanager_billing_groups_model extends App_Model
         $staff = $this->db->get(db_prefix() . 'staff')->row();
 
         return $staff ? $lead->assigned : null;
+    }
+
+    /**
+     * Check if charge can be safely deleted
+     * @param int $charge_id
+     * @return array
+     */
+    public function can_delete_charge($charge_id)
+    {
+        $this->load->model('chargemanager_charges_model');
+        $charge = $this->chargemanager_charges_model->get($charge_id);
+        
+        if (!$charge || !$charge->billing_group_id) {
+            return ['can_delete' => false, 'reason' => 'Charge not found'];
+        }
+
+        // Don't allow deletion if it would make billing group incomplete
+        $validation = $this->validate_billing_group_completeness($charge->billing_group_id);
+        
+        if ($validation['valid']) {
+            // If currently complete, check if deletion would break completeness
+            $remaining_value = $validation['charges_value'] - floatval($charge->value);
+            $difference = abs($remaining_value - $validation['contract_value']);
+            
+            if ($difference > 0.01) {
+                return [
+                    'can_delete' => false, 
+                    'reason' => 'Deleting this charge would make billing group incomplete',
+                    'suggestion' => 'Create a replacement charge first',
+                    'current_value' => $validation['charges_value'],
+                    'contract_value' => $validation['contract_value'],
+                    'charge_value' => floatval($charge->value),
+                    'remaining_value' => $remaining_value
+                ];
+            }
+        }
+
+        return ['can_delete' => true];
     }
 } 

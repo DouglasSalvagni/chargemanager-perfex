@@ -244,14 +244,9 @@ function chargemanager_client_tab_view_js() {
             background-color: #e3f2fd !important;
         }
         .entry-charge-badge .label-primary {
+            color: #f8f9fa;
             background-color: #007bff;
             font-size: 10px;
-            animation: pulse-entry 2s infinite;
-        }
-        @keyframes pulse-entry {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
         }
         .remove-charge:disabled {
             opacity: 0.5;

@@ -554,18 +554,17 @@ class Billing_groups extends AdminController
      */
     private function get_status_class($status)
     {
-        switch ($status) {
-            case 'open':
-                return 'info';
-            case 'processing':
-                return 'warning';
-            case 'completed':
-                return 'success';
-            case 'cancelled':
-                return 'danger';
-            default:
-                return 'default';
-        }
+        $status_config = $this->chargemanager_billing_groups_model->get_status_config($status);
+        // Convert label-* classes to table classes
+        $class_map = [
+            'label-success' => 'success',
+            'label-info' => 'info', 
+            'label-warning' => 'warning',
+            'label-danger' => 'danger',
+            'label-default' => 'default'
+        ];
+        
+        return $class_map[$status_config['class']] ?? 'default';
     }
 
     /**
@@ -583,9 +582,13 @@ class Billing_groups extends AdminController
             show_404();
         }
 
-        // Check if billing group can be edited
-        if (in_array($billing_group->status, ['completed', 'cancelled'])) {
-            set_alert('warning', _l('chargemanager_billing_group_cannot_be_edited'));
+        // Check if billing group can be edited using new status logic
+        if (!$this->chargemanager_billing_groups_model->can_edit_billing_group($billing_group->status)) {
+            $status_config = $this->chargemanager_billing_groups_model->get_status_config($billing_group->status);
+            $message = $billing_group->status === 'completed_exact' ? 
+                'Billing group está completo e não pode ser editado. Todas cobranças pagas com valor exato.' :
+                'Billing group cancelado não pode ser editado.';
+            set_alert('warning', $message);
             redirect(admin_url('chargemanager/billing_groups/view/' . $id));
             return;
         }
@@ -686,7 +689,14 @@ class Billing_groups extends AdminController
 
             // Validate and update status
             if (isset($data['status'])) {
-                $allowed_statuses = ['open', 'partial', 'completed', 'overdue', 'cancelled'];
+                $allowed_statuses = [
+                    'open', 'incomplete', 'cancelled',
+                    'partial_on_track', 'partial_over', 'partial_under',
+                    'overdue_on_track', 'overdue_over', 'overdue_under',
+                    'completed_exact', 'completed_over', 'completed_under',
+                    // Legacy statuses for backwards compatibility
+                    'partial', 'completed', 'overdue'
+                ];
                 if (in_array($data['status'], $allowed_statuses)) {
                     $update_data['status'] = $data['status'];
                 } else {
@@ -756,9 +766,9 @@ class Billing_groups extends AdminController
                 throw new Exception('Billing group not found');
             }
 
-            // Check if billing group can be edited
-            if (in_array($billing_group->status, ['completed', 'cancelled'])) {
-                throw new Exception('Cannot add charges to completed or cancelled billing group');
+            // Check if billing group can be edited using new status logic
+            if (!$this->chargemanager_billing_groups_model->can_edit_billing_group($billing_group->status)) {
+                throw new Exception('Cannot add charges to this billing group due to its current status: ' . $billing_group->status);
             }
 
             // Validate charge data
@@ -879,6 +889,12 @@ class Billing_groups extends AdminController
             $charge = $this->chargemanager_charges_model->get($charge_id);
             if (!$charge) {
                 throw new Exception('Charge not found');
+            }
+
+            // Check if charge can be safely deleted
+            $deletion_check = $this->chargemanager_billing_groups_model->can_delete_charge($charge_id);
+            if (!$deletion_check['can_delete']) {
+                throw new Exception($deletion_check['reason'] . '. ' . ($deletion_check['suggestion'] ?? ''));
             }
 
             // Check if charge can be edited

@@ -262,4 +262,52 @@ $lang['chargemanager_status_cancelled'] = 'Cancelled';
 $lang['chargemanager_original_lead_agent'] = 'Original Lead Agent';
 
 // Admin Only
-$lang['admin_only'] = 'Admin Only'; 
+$lang['admin_only'] = 'Admin Only';
+
+// New Granular Status Translations
+$lang['chargemanager_status_completed_exact'] = 'Completed';
+$lang['chargemanager_status_completed_over'] = 'Completed (Over)';
+$lang['chargemanager_status_completed_under'] = 'Completed (Under)';
+$lang['chargemanager_status_partial_on_track'] = 'Partial';
+$lang['chargemanager_status_partial_over'] = 'Partial (Over)';
+$lang['chargemanager_status_partial_under'] = 'Partial (Incomplete)';
+$lang['chargemanager_status_overdue_on_track'] = 'Overdue';
+$lang['chargemanager_status_overdue_over'] = 'Overdue (Over)';
+$lang['chargemanager_status_overdue_under'] = 'Overdue (Incomplete)';
+$lang['chargemanager_status_incomplete'] = 'Incomplete';
+
+// Status descriptions
+$lang['chargemanager_status_desc_completed_exact'] = 'All charges paid, exact contract value';
+$lang['chargemanager_status_desc_completed_over'] = 'All charges paid, value above contract';
+$lang['chargemanager_status_desc_completed_under'] = 'All charges paid, value below contract';
+$lang['chargemanager_status_desc_partial_on_track'] = 'Some charges paid, total value correct';
+$lang['chargemanager_status_desc_partial_over'] = 'Some charges paid, total value above contract';
+$lang['chargemanager_status_desc_partial_under'] = 'Some charges paid, missing charges';
+$lang['chargemanager_status_desc_overdue_on_track'] = 'Overdue charges, total value correct';
+$lang['chargemanager_status_desc_overdue_over'] = 'Overdue charges, value above contract';
+$lang['chargemanager_status_desc_overdue_under'] = 'Overdue charges, missing charges';
+$lang['chargemanager_status_desc_open'] = 'Awaiting payments';
+$lang['chargemanager_status_desc_incomplete'] = 'Missing charges to reach contract value';
+$lang['chargemanager_status_desc_cancelled'] = 'All charges cancelled';
+
+// Status Legend Translations
+$lang['chargemanager_status_legend'] = 'Status Legend';
+$lang['chargemanager_show_legend'] = 'Show Legend';
+$lang['chargemanager_hide_legend'] = 'Hide Legend';
+$lang['chargemanager_completed_statuses'] = 'Completed Statuses';
+$lang['chargemanager_partial_statuses'] = 'Partial Statuses';
+$lang['chargemanager_problem_statuses'] = 'Problem Statuses';
+$lang['chargemanager_basic_statuses'] = 'Basic Statuses';
+$lang['chargemanager_value_indicators'] = 'Value Indicators';
+$lang['chargemanager_exact_value'] = 'Exact Value';
+$lang['chargemanager_exact_value_desc'] = 'Charges value equals contract value';
+$lang['chargemanager_over_value'] = 'Over Value';
+$lang['chargemanager_over_value_desc'] = 'Charges value above contract value (renegotiation)';
+$lang['chargemanager_under_value'] = 'Under Value';
+$lang['chargemanager_under_value_desc'] = 'Charges value below contract value (incomplete)';
+$lang['chargemanager_editability_rules'] = 'Editability Rules';
+$lang['chargemanager_editable_statuses'] = 'Editable Statuses';
+$lang['chargemanager_editable_statuses_desc'] = 'All statuses except "Completed" (exact value) and "Cancelled" can be edited';
+$lang['chargemanager_non_editable_statuses'] = 'Non-Editable Statuses';
+$lang['chargemanager_non_editable_statuses_desc'] = 'Only "Completed" (exact value) and "Cancelled" cannot be edited';
+$lang['chargemanager_copied_to_clipboard'] = 'Copied to clipboard'; 

@@ -197,6 +197,11 @@ function chargemanager_load_admin_assets()
     
     if ($load_assets) {
         echo '<link href="' . module_dir_url(CHARGEMANAGER_MODULE_NAME, 'assets/css/chargemanager.css') . '" rel="stylesheet" type="text/css" />';
+        echo '<style>
+        /* Additional enhanced status styling */
+        .label-billing-status { display: inline-flex; align-items: center; gap: 5px; }
+        .status-tooltip { cursor: help; }
+        </style>';
     }
 }
 
