@@ -16,15 +16,15 @@
                                     <?php echo _l('chargemanager_edit_billing_group'); ?> #<?php echo $billing_group->id; ?>
                                 </h4>
                                 <p class="text-muted">
-                                    <?php echo _l('chargemanager_client'); ?>: 
+                                    <?php echo _l('chargemanager_client'); ?>:
                                     <a href="<?php echo admin_url('clients/client/' . $billing_group->client_id); ?>">
                                         <?php echo $client ? $client->company : 'N/A'; ?>
                                     </a>
                                 </p>
                             </div>
                             <div class="col-md-4 text-right">
-                                <a href="<?php echo admin_url('chargemanager/billing_groups/view/' . $billing_group->id); ?>" 
-                                   class="btn btn-default">
+                                <a href="<?php echo admin_url('chargemanager/billing_groups/view/' . $billing_group->id); ?>"
+                                    class="btn btn-default">
                                     <i class="fa fa-arrow-left"></i> <?php echo _l('back'); ?>
                                 </a>
                             </div>
@@ -34,59 +34,59 @@
 
                 <!-- Basic Information -->
                 <?php if (is_admin()): ?>
-                <div class="panel panel-default">
-                    <div class="panel-heading">
-                        <h5 class="panel-title">
-                            <i class="fa fa-info-circle"></i> <?php echo _l('chargemanager_basic_information'); ?>
-                            <small class="text-muted">(<?php echo _l('admin_only'); ?>)</small>
-                        </h5>
-                    </div>
-                    <div class="panel-body">
-                        <?php echo form_open(admin_url('chargemanager/billing_groups/update/' . $billing_group->id), ['id' => 'billing-group-basic-form']); ?>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="sale_agent"><?php echo _l('chargemanager_sale_agent'); ?></label>
-                                    <select name="sale_agent" id="sale_agent" class="form-control selectpicker" 
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h5 class="panel-title">
+                                <i class="fa fa-info-circle"></i> <?php echo _l('chargemanager_basic_information'); ?>
+                                <small class="text-muted">(<?php echo _l('admin_only'); ?>)</small> <span class="label label-danger">Refatorar para que edite também o vendedor vinculado aos invoices?</span>
+                            </h5>
+                        </div>
+                        <div class="panel-body">
+                            <?php echo form_open(admin_url('chargemanager/billing_groups/update/' . $billing_group->id), ['id' => 'billing-group-basic-form']); ?>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="sale_agent"><?php echo _l('chargemanager_sale_agent'); ?></label>
+                                        <select name="sale_agent" id="sale_agent" class="form-control selectpicker"
                                             data-live-search="true">
-                                        <option value=""><?php echo _l('chargemanager_no_sale_agent'); ?></option>
-                                        <?php if (!empty($staff_members)): ?>
-                                            <?php foreach($staff_members as $staff): ?>
-                                                <option value="<?php echo $staff['staffid']; ?>" 
+                                            <option value=""><?php echo _l('chargemanager_no_sale_agent'); ?></option>
+                                            <?php if (!empty($staff_members)): ?>
+                                                <?php foreach ($staff_members as $staff): ?>
+                                                    <option value="<?php echo $staff['staffid']; ?>"
                                                         <?php echo ($billing_group->sale_agent == $staff['staffid']) ? 'selected' : ''; ?>>
-                                                    <?php echo $staff['firstname'] . ' ' . $staff['lastname']; ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    </select>
+                                                        <?php echo $staff['firstname'] . ' ' . $staff['lastname']; ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                        </select>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="status"><?php echo _l('chargemanager_status'); ?></label>
-                                    <select name="status" id="status" class="form-control">
-                                        <option value="open" <?php echo ($billing_group->status == 'open') ? 'selected' : ''; ?>><?php echo _l('chargemanager_status_open'); ?></option>
-                                        <option value="partial" <?php echo ($billing_group->status == 'partial') ? 'selected' : ''; ?>><?php echo _l('chargemanager_status_partial'); ?></option>
-                                        <option value="completed" <?php echo ($billing_group->status == 'completed') ? 'selected' : ''; ?>><?php echo _l('chargemanager_status_completed'); ?></option>
-                                        <option value="overdue" <?php echo ($billing_group->status == 'overdue') ? 'selected' : ''; ?>><?php echo _l('chargemanager_status_overdue'); ?></option>
-                                        <option value="cancelled" <?php echo ($billing_group->status == 'cancelled') ? 'selected' : ''; ?>><?php echo _l('chargemanager_status_cancelled'); ?></option>
-                                    </select>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="status"><?php echo _l('chargemanager_status'); ?></label>
+                                        <select name="status" id="status" class="form-control">
+                                            <option value="open" <?php echo ($billing_group->status == 'open') ? 'selected' : ''; ?>><?php echo _l('chargemanager_status_open'); ?></option>
+                                            <option value="partial" <?php echo ($billing_group->status == 'partial') ? 'selected' : ''; ?>><?php echo _l('chargemanager_status_partial'); ?></option>
+                                            <option value="completed" <?php echo ($billing_group->status == 'completed') ? 'selected' : ''; ?>><?php echo _l('chargemanager_status_completed'); ?></option>
+                                            <option value="overdue" <?php echo ($billing_group->status == 'overdue') ? 'selected' : ''; ?>><?php echo _l('chargemanager_status_overdue'); ?></option>
+                                            <option value="cancelled" <?php echo ($billing_group->status == 'cancelled') ? 'selected' : ''; ?>><?php echo _l('chargemanager_status_cancelled'); ?></option>
+                                        </select>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label>&nbsp;</label>
-                                    <div>
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fa fa-save"></i> <?php echo _l('chargemanager_update_basic_info'); ?>
-                                        </button>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>&nbsp;</label>
+                                        <div>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="fa fa-save"></i> <?php echo _l('chargemanager_update_basic_info'); ?>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            <?php echo form_close(); ?>
                         </div>
-                        <?php echo form_close(); ?>
                     </div>
-                </div>
                 <?php endif; ?>
 
                 <!-- Summary Cards -->
@@ -135,37 +135,37 @@
 
                 <!-- Contract Information -->
                 <?php if ($contract): ?>
-                <div class="panel panel-default">
-                    <div class="panel-heading">
-                        <h5 class="panel-title">
-                            <i class="fa fa-file-text"></i> <?php echo _l('chargemanager_contract_info'); ?>
-                        </h5>
-                    </div>
-                    <div class="panel-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <strong><?php echo _l('contract_subject'); ?>:</strong>
-                                <a href="<?php echo admin_url('contracts/contract/' . $contract->id); ?>" target="_blank">
-                                    <?php echo htmlspecialchars($contract->subject); ?>
-                                </a>
-                            </div>
-                            <div class="col-md-3">
-                                <strong><?php echo _l('contract_value'); ?>:</strong>
-                                <?php echo app_format_money($contract->contract_value, get_base_currency()); ?>
-                            </div>
-                            <div class="col-md-3">
-                                <strong><?php echo _l('chargemanager_difference'); ?>:</strong>
-                                <?php 
-                                $difference = $billing_group->total_amount - $contract->contract_value;
-                                $difference_class = $difference > 0 ? 'text-warning' : ($difference < 0 ? 'text-danger' : 'text-success');
-                                ?>
-                                <span class="<?php echo $difference_class; ?>">
-                                    <?php echo app_format_money($difference, get_base_currency()); ?>
-                                </span>
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h5 class="panel-title">
+                                <i class="fa fa-file-text"></i> <?php echo _l('chargemanager_contract_info'); ?>
+                            </h5>
+                        </div>
+                        <div class="panel-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong><?php echo _l('contract_subject'); ?>:</strong>
+                                    <a href="<?php echo admin_url('contracts/contract/' . $contract->id); ?>" target="_blank">
+                                        <?php echo htmlspecialchars($contract->subject); ?>
+                                    </a>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong><?php echo _l('contract_value'); ?>:</strong>
+                                    <?php echo app_format_money($contract->contract_value, get_base_currency()); ?>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong><?php echo _l('chargemanager_difference'); ?>:</strong>
+                                    <?php
+                                    $difference = $billing_group->total_amount - $contract->contract_value;
+                                    $difference_class = $difference > 0 ? 'text-warning' : ($difference < 0 ? 'text-danger' : 'text-success');
+                                    ?>
+                                    <span class="<?php echo $difference_class; ?>">
+                                        <?php echo app_format_money($difference, get_base_currency()); ?>
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
                 <?php endif; ?>
 
                 <!-- Charges Management -->
@@ -272,9 +272,9 @@
                                                         <i class="fa fa-check"></i> <?php echo _l('chargemanager_yes'); ?>
                                                     </span>
                                                 <?php else: ?>
-                                                    <button type="button" class="btn btn-primary btn-xs" 
-                                                            onclick="setAsEntryCharge(<?php echo $charge->id; ?>)"
-                                                            title="<?php echo _l('chargemanager_set_as_entry'); ?>">
+                                                    <button type="button" class="btn btn-primary btn-xs"
+                                                        onclick="setAsEntryCharge(<?php echo $charge->id; ?>)"
+                                                        title="<?php echo _l('chargemanager_set_as_entry'); ?>">
                                                         <i class="fa fa-star"></i> <?php echo _l('chargemanager_set_entry'); ?>
                                                     </button>
                                                 <?php endif; ?>
@@ -291,14 +291,14 @@
 
                                                     <?php if (in_array($charge->status, ['pending', 'overdue'])): ?>
                                                         <button type="button" class="btn btn-info btn-xs"
-                                                                onclick="editCharge(<?php echo $charge->id; ?>)"
-                                                                title="<?php echo _l('edit'); ?>">
+                                                            onclick="editCharge(<?php echo $charge->id; ?>)"
+                                                            title="<?php echo _l('edit'); ?>">
                                                             <i class="fa fa-edit"></i>
                                                         </button>
-                                                        
+
                                                         <button type="button" class="btn btn-danger btn-xs"
-                                                                onclick="deleteCharge(<?php echo $charge->id; ?>)"
-                                                                title="<?php echo _l('delete'); ?>">
+                                                            onclick="deleteCharge(<?php echo $charge->id; ?>)"
+                                                            title="<?php echo _l('delete'); ?>">
                                                             <i class="fa fa-trash"></i>
                                                         </button>
                                                     <?php endif; ?>
@@ -329,17 +329,17 @@
             <form id="addChargeForm">
                 <div class="modal-body">
                     <input type="hidden" name="billing_group_id" value="<?php echo $billing_group->id; ?>">
-                    
+
                     <div class="form-group">
                         <label for="add_value"><?php echo _l('chargemanager_value'); ?> <span class="text-danger">*</span></label>
                         <input type="number" class="form-control" id="add_value" name="value" step="0.01" min="0.01" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="add_due_date"><?php echo _l('chargemanager_due_date'); ?> <span class="text-danger">*</span></label>
                         <input type="date" class="form-control" id="add_due_date" name="due_date" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="add_billing_type"><?php echo _l('chargemanager_billing_type'); ?> <span class="text-danger">*</span></label>
                         <select class="form-control" id="add_billing_type" name="billing_type" required>
@@ -349,7 +349,7 @@
                             <option value="CREDIT_CARD"><?php echo _l('chargemanager_billing_type_credit_card'); ?></option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="add_description"><?php echo _l('chargemanager_description'); ?></label>
                         <textarea class="form-control" id="add_description" name="description" rows="3"></textarea>
@@ -377,17 +377,17 @@
             <form id="editChargeForm">
                 <div class="modal-body">
                     <input type="hidden" name="charge_id" id="edit_charge_id">
-                    
+
                     <div class="form-group">
                         <label for="edit_value"><?php echo _l('chargemanager_value'); ?> <span class="text-danger">*</span></label>
                         <input type="number" class="form-control" id="edit_value" name="value" step="0.01" min="0.01" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="edit_due_date"><?php echo _l('chargemanager_due_date'); ?> <span class="text-danger">*</span></label>
                         <input type="date" class="form-control" id="edit_due_date" name="due_date" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="edit_billing_type"><?php echo _l('chargemanager_billing_type'); ?> <span class="text-danger">*</span></label>
                         <select class="form-control" id="edit_billing_type" name="billing_type" required>
@@ -396,7 +396,7 @@
                             <option value="CREDIT_CARD"><?php echo _l('chargemanager_billing_type_credit_card'); ?></option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="edit_description"><?php echo _l('chargemanager_description'); ?></label>
                         <textarea class="form-control" id="edit_description" name="description" rows="3"></textarea>
@@ -415,187 +415,195 @@
 <?php init_tail(); ?>
 
 <style>
-.entry-charge-row {
-    background-color: #f8f9fa !important;
-    border-left: 4px solid #007bff !important;
-}
+    .entry-charge-row {
+        background-color: #f8f9fa !important;
+        border-left: 4px solid #007bff !important;
+    }
 
-.entry-charge-row:hover {
-    background-color: #e9ecef !important;
-}
+    .entry-charge-row:hover {
+        background-color: #e9ecef !important;
+    }
 
-.label-primary {
-    background-color: #007bff;
-    font-size: 10px;
-}
+    .label-primary {
+        background-color: #007bff;
+        font-size: 10px;
+    }
 
-.entry-charge-row .label-primary {
-    animation: pulse-entry 2s infinite;
-}
+    .entry-charge-row .label-primary {
+        animation: pulse-entry 2s infinite;
+    }
 
-@keyframes pulse-entry {
-    0% { opacity: 1; }
-    50% { opacity: 0.7; }
-    100% { opacity: 1; }
-}
+    @keyframes pulse-entry {
+        0% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.7;
+        }
+
+        100% {
+            opacity: 1;
+        }
+    }
 </style>
 
 <script>
-// Charges data for JavaScript
-var chargesData = <?php echo json_encode($charges); ?>;
+    // Charges data for JavaScript
+    var chargesData = <?php echo json_encode($charges); ?>;
 
-// Add new charge
-function addNewCharge() {
-    $('#addChargeModal').modal('show');
-    // Set minimum date to today
-    $('#add_due_date').attr('min', new Date().toISOString().split('T')[0]);
-}
-
-// Edit charge
-function editCharge(chargeId) {
-    var charge = chargesData.find(c => c.id == chargeId);
-    if (!charge) {
-        alert('Charge not found');
-        return;
+    // Add new charge
+    function addNewCharge() {
+        $('#addChargeModal').modal('show');
+        // Set minimum date to today
+        $('#add_due_date').attr('min', new Date().toISOString().split('T')[0]);
     }
-    
-    $('#edit_charge_id').val(charge.id);
-    $('#edit_value').val(charge.value);
-    $('#edit_due_date').val(charge.due_date);
-    $('#edit_billing_type').val(charge.billing_type);
-    $('#edit_description').val(charge.description || '');
-    
-    $('#editChargeModal').modal('show');
-}
 
-// Delete charge
-function deleteCharge(chargeId) {
-    if (!confirm('<?php echo _l('chargemanager_confirm_delete_charge'); ?>')) {
-        return;
+    // Edit charge
+    function editCharge(chargeId) {
+        var charge = chargesData.find(c => c.id == chargeId);
+        if (!charge) {
+            alert('Charge not found');
+            return;
+        }
+
+        $('#edit_charge_id').val(charge.id);
+        $('#edit_value').val(charge.value);
+        $('#edit_due_date').val(charge.due_date);
+        $('#edit_billing_type').val(charge.billing_type);
+        $('#edit_description').val(charge.description || '');
+
+        $('#editChargeModal').modal('show');
     }
-    
-    $.ajax({
-        url: '<?php echo admin_url('chargemanager/billing_groups/delete_charge'); ?>',
-        type: 'POST',
-        data: {
-            charge_id: chargeId,
-            '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
-        },
-        dataType: 'json',
-        success: function(response) {
-            if (response.success) {
-                alert_float('success', response.message);
-                // Remove row from table
-                $('#charge-row-' + chargeId).fadeOut(function() {
-                    $(this).remove();
-                    updateTotals();
-                });
-            } else {
-                alert_float('danger', response.message);
-            }
-        },
-        error: function() {
-            alert_float('danger', 'An error occurred');
+
+    // Delete charge
+    function deleteCharge(chargeId) {
+        if (!confirm('<?php echo _l('chargemanager_confirm_delete_charge'); ?>')) {
+            return;
         }
-    });
-}
 
-// Handle add charge form submission
-$('#addChargeForm').on('submit', function(e) {
-    e.preventDefault();
-    
-    var formData = $(this).serialize();
-    formData += '&<?php echo $this->security->get_csrf_token_name(); ?>=<?php echo $this->security->get_csrf_hash(); ?>';
-    
-    $.ajax({
-        url: '<?php echo admin_url('chargemanager/billing_groups/add_charge'); ?>',
-        type: 'POST',
-        data: formData,
-        dataType: 'json',
-        success: function(response) {
-            if (response.success) {
-                alert_float('success', response.message);
-                $('#addChargeModal').modal('hide');
-                // Reload page to show new charge
-                location.reload();
-            } else {
-                alert_float('danger', response.message);
+        $.ajax({
+            url: '<?php echo admin_url('chargemanager/billing_groups/delete_charge'); ?>',
+            type: 'POST',
+            data: {
+                charge_id: chargeId,
+                '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    alert_float('success', response.message);
+                    // Remove row from table
+                    $('#charge-row-' + chargeId).fadeOut(function() {
+                        $(this).remove();
+                        updateTotals();
+                    });
+                } else {
+                    alert_float('danger', response.message);
+                }
+            },
+            error: function() {
+                alert_float('danger', 'An error occurred');
             }
-        },
-        error: function() {
-            alert_float('danger', 'An error occurred');
-        }
-    });
-});
-
-// Handle edit charge form submission
-$('#editChargeForm').on('submit', function(e) {
-    e.preventDefault();
-    
-    var formData = $(this).serialize();
-    formData += '&<?php echo $this->security->get_csrf_token_name(); ?>=<?php echo $this->security->get_csrf_hash(); ?>';
-    
-    $.ajax({
-        url: '<?php echo admin_url('chargemanager/billing_groups/edit_charge'); ?>',
-        type: 'POST',
-        data: formData,
-        dataType: 'json',
-        success: function(response) {
-            if (response.success) {
-                alert_float('success', response.message);
-                $('#editChargeModal').modal('hide');
-                // Reload page to show updated charge
-                location.reload();
-            } else {
-                alert_float('danger', response.message);
-            }
-        },
-        error: function() {
-            alert_float('danger', 'An error occurred');
-        }
-    });
-});
-
-// Reset forms when modals are hidden
-$('#addChargeModal').on('hidden.bs.modal', function() {
-    $('#addChargeForm')[0].reset();
-});
-
-$('#editChargeModal').on('hidden.bs.modal', function() {
-    $('#editChargeForm')[0].reset();
-});
-
-function updateTotals() {
-    // This could be enhanced to update totals without page reload
-    // For now, we'll rely on page reload after changes
-}
-
-// Set charge as entry charge
-function setAsEntryCharge(chargeId) {
-    if (!confirm('<?php echo _l('chargemanager_confirm_set_entry_charge'); ?>')) {
-        return;
+        });
     }
-    
-    $.ajax({
-        url: '<?php echo admin_url('chargemanager/billing_groups/set_entry_charge'); ?>',
-        type: 'POST',
-        data: {
-            charge_id: chargeId,
-            '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
-        },
-        dataType: 'json',
-        success: function(response) {
-            if (response.success) {
-                alert_float('success', response.message);
-                // Reload page to show updated entry charge
-                location.reload();
-            } else {
-                alert_float('danger', response.message);
+
+    // Handle add charge form submission
+    $('#addChargeForm').on('submit', function(e) {
+        e.preventDefault();
+
+        var formData = $(this).serialize();
+        formData += '&<?php echo $this->security->get_csrf_token_name(); ?>=<?php echo $this->security->get_csrf_hash(); ?>';
+
+        $.ajax({
+            url: '<?php echo admin_url('chargemanager/billing_groups/add_charge'); ?>',
+            type: 'POST',
+            data: formData,
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    alert_float('success', response.message);
+                    $('#addChargeModal').modal('hide');
+                    // Reload page to show new charge
+                    location.reload();
+                } else {
+                    alert_float('danger', response.message);
+                }
+            },
+            error: function() {
+                alert_float('danger', 'An error occurred');
             }
-        },
-        error: function() {
-            alert_float('danger', 'An error occurred');
-        }
+        });
     });
-}
+
+    // Handle edit charge form submission
+    $('#editChargeForm').on('submit', function(e) {
+        e.preventDefault();
+
+        var formData = $(this).serialize();
+        formData += '&<?php echo $this->security->get_csrf_token_name(); ?>=<?php echo $this->security->get_csrf_hash(); ?>';
+
+        $.ajax({
+            url: '<?php echo admin_url('chargemanager/billing_groups/edit_charge'); ?>',
+            type: 'POST',
+            data: formData,
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    alert_float('success', response.message);
+                    $('#editChargeModal').modal('hide');
+                    // Reload page to show updated charge
+                    location.reload();
+                } else {
+                    alert_float('danger', response.message);
+                }
+            },
+            error: function() {
+                alert_float('danger', 'An error occurred');
+            }
+        });
+    });
+
+    // Reset forms when modals are hidden
+    $('#addChargeModal').on('hidden.bs.modal', function() {
+        $('#addChargeForm')[0].reset();
+    });
+
+    $('#editChargeModal').on('hidden.bs.modal', function() {
+        $('#editChargeForm')[0].reset();
+    });
+
+    function updateTotals() {
+        // This could be enhanced to update totals without page reload
+        // For now, we'll rely on page reload after changes
+    }
+
+    // Set charge as entry charge
+    function setAsEntryCharge(chargeId) {
+        if (!confirm('<?php echo _l('chargemanager_confirm_set_entry_charge'); ?>')) {
+            return;
+        }
+
+        $.ajax({
+            url: '<?php echo admin_url('chargemanager/billing_groups/set_entry_charge'); ?>',
+            type: 'POST',
+            data: {
+                charge_id: chargeId,
+                '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    alert_float('success', response.message);
+                    // Reload page to show updated entry charge
+                    location.reload();
+                } else {
+                    alert_float('danger', response.message);
+                }
+            },
+            error: function() {
+                alert_float('danger', 'An error occurred');
+            }
+        });
+    }
 </script>
