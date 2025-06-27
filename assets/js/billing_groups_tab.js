@@ -8,6 +8,7 @@ $(document).ready(function() {
     
     var chargeIndex = 0;
     var contractValue = 0;
+    var nextChargeNumber = 1; // Para controlar a numeração sequencial
     
     // Initialize DataTable for existing billing groups (with delay for tab loading)
     setTimeout(function() {
@@ -217,8 +218,16 @@ $(document).ready(function() {
         chargeIndex++;
         var template = $('#charge-template').html();
         template = template.replace(/{index}/g, chargeIndex);
+        template = template.replace(/{actualIndex}/g, nextChargeNumber);
         
         $('.charges-list').append(template);
+        
+        // Mark first charge as entry charge
+        updateEntryChargeStatus();
+        
+        // Increment next charge number
+        nextChargeNumber++;
+        
         calculateTotals();
     }
     
@@ -226,7 +235,23 @@ $(document).ready(function() {
      * Remove a charge
      */
     function removeCharge($button) {
-        $button.closest('.charge-item').remove();
+        var $chargeItem = $button.closest('.charge-item');
+        var isEntryCharge = $chargeItem.hasClass('entry-charge-item');
+        
+        // Prevent removal of entry charge if there are other charges
+        if (isEntryCharge && $('.charge-item').length > 1) {
+            alert_float('warning', 'A cobrança de entrada não pode ser removida. Para remover, primeiro defina outra cobrança como entrada.');
+            return;
+        }
+        
+        $chargeItem.remove();
+        
+        // Update entry charge status after removal
+        updateEntryChargeStatus();
+        
+        // Renumber all charges
+        renumberCharges();
+        
         calculateTotals();
     }
     
@@ -384,6 +409,64 @@ $(document).ready(function() {
         $('#submit-btn').prop('disabled', true);
         chargeIndex = 0;
         contractValue = 0;
+        nextChargeNumber = 1; // Reset charge numbering
+    }
+    
+    /**
+     * Update entry charge status
+     */
+    function updateEntryChargeStatus() {
+        var $charges = $('.charge-item');
+        
+        // Remove all entry charge styling first
+        $charges.removeClass('entry-charge-item');
+        $charges.find('.entry-charge-badge').hide();
+        $charges.find('.remove-charge').prop('disabled', false).prop('title', '');
+        
+        if ($charges.length > 0) {
+            // Mark first charge as entry charge
+            var $firstCharge = $charges.first();
+            $firstCharge.addClass('entry-charge-item');
+            $firstCharge.find('.entry-charge-badge').show();
+            
+            // If there are multiple charges, disable removal of entry charge
+            if ($charges.length > 1) {
+                $firstCharge.find('.remove-charge').prop('disabled', true).prop('title', 'A cobrança de entrada não pode ser removida');
+            }
+        }
+    }
+    
+    /**
+     * Renumber all charges sequentially
+     */
+    function renumberCharges() {
+        var $charges = $('.charge-item');
+        nextChargeNumber = 1;
+        
+        $charges.each(function(index) {
+            var $charge = $(this);
+            var newNumber = index + 1;
+            
+            // Update display number
+            $charge.find('.panel-title').html(
+                '<i class="fa fa-credit-card"></i> Cobrança #' + newNumber +
+                '<span class="entry-charge-badge" style="' + (index === 0 ? '' : 'display: none;') + '">' +
+                '<span class="label label-primary" style="margin-left: 10px;">' +
+                '<i class="fa fa-star"></i> Entrada' +
+                '</span></span>'
+            );
+            
+            // Update form field names
+            $charge.find('input[name*="[amount]"]').attr('name', 'charges[' + index + '][amount]');
+            $charge.find('input[name*="[due_date]"]').attr('name', 'charges[' + index + '][due_date]');
+            $charge.find('select[name*="[billing_type]"]').attr('name', 'charges[' + index + '][billing_type]');
+            
+            // Update data attributes
+            $charge.attr('data-actual-index', newNumber);
+        });
+        
+        // Update next charge number for new charges
+        nextChargeNumber = $charges.length + 1;
     }
     
     /**

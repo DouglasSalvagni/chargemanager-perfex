@@ -209,16 +209,6 @@ class Chargemanager_charges_model extends App_Model
         }
     }
 
-    /**
-     * Delete a charge
-     * @param int $id
-     * @return bool
-     */
-    public function delete($id)
-    {
-        $this->db->where('id', $id);
-        return $this->db->delete(db_prefix() . 'chargemanager_charges');
-    }
 
     /**
      * Get all charges
@@ -275,8 +265,9 @@ class Chargemanager_charges_model extends App_Model
             
             $created_charges = [];
             $errors = [];
+            $first_charge_id = null;
 
-            foreach ($charges_data as $charge_data) {
+            foreach ($charges_data as $index => $charge_data) {
                 try {
                     // Create charge via gateway
                     $gateway_result = $this->gateway_manager->create_charge($charge_data);
@@ -292,6 +283,7 @@ class Chargemanager_charges_model extends App_Model
                             'due_date' => $charge_data['due_date'],
                             'billing_type' => $charge_data['billing_type'],
                             'status' => 'pending',
+                            'is_entry_charge' => ($index === 0) ? 1 : 0, // First charge is entry charge
                             'invoice_url' => $gateway_result['invoice_url'] ?? null,
                             'barcode' => $gateway_result['barcode'] ?? null,
                             'pix_code' => $gateway_result['pix_code'] ?? null
@@ -301,6 +293,9 @@ class Chargemanager_charges_model extends App_Model
                         
                         if ($charge_id) {
                             $created_charges[] = $charge_id;
+                            if ($index === 0) {
+                                $first_charge_id = $charge_id;
+                            }
                         } else {
                             $errors[] = _l('chargemanager_error_saving_charge_to_db');
                         }
@@ -313,9 +308,15 @@ class Chargemanager_charges_model extends App_Model
                 }
             }
 
+            // Log entry charge assignment
+            if ($first_charge_id) {
+                log_activity('ChargeManager: Charge #' . $first_charge_id . ' automatically set as entry charge');
+            }
+
             return [
                 'success' => count($created_charges) > 0,
                 'created_charges' => $created_charges,
+                'entry_charge_id' => $first_charge_id,
                 'errors' => $errors,
                 'total_created' => count($created_charges),
                 'total_errors' => count($errors)
@@ -904,5 +905,128 @@ class Chargemanager_charges_model extends App_Model
         }
 
         return $charge;
+    }
+
+    /**
+     * Set a charge as entry charge for its billing group
+     * @param int $charge_id
+     * @return bool
+     */
+    public function set_as_entry_charge($charge_id)
+    {
+        try {
+            $charge = $this->get($charge_id);
+            
+            if (!$charge || empty($charge->billing_group_id)) {
+                return false;
+            }
+
+            // Remove entry flag from other charges in the same billing group
+            $this->db->where('billing_group_id', $charge->billing_group_id);
+            $this->db->where('id !=', $charge_id);
+            $this->db->update(db_prefix() . 'chargemanager_charges', ['is_entry_charge' => 0]);
+
+            // Set this charge as entry charge
+            $this->db->where('id', $charge_id);
+            $updated = $this->db->update(db_prefix() . 'chargemanager_charges', ['is_entry_charge' => 1]);
+
+            if ($updated) {
+                log_activity('ChargeManager: Charge #' . $charge_id . ' set as entry charge');
+            }
+
+            return $updated;
+
+        } catch (Exception $e) {
+            log_activity('ChargeManager Error setting entry charge: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Get entry charge for a billing group
+     * @param int $billing_group_id
+     * @return object|null
+     */
+    public function get_entry_charge($billing_group_id)
+    {
+        if (empty($billing_group_id)) {
+            return null;
+        }
+
+        $this->db->where('billing_group_id', $billing_group_id);
+        $this->db->where('is_entry_charge', 1);
+        return $this->db->get(db_prefix() . 'chargemanager_charges')->row();
+    }
+
+    /**
+     * Auto-assign entry charge when current entry is deleted
+     * @param int $billing_group_id
+     * @return bool
+     */
+    public function auto_assign_entry_charge($billing_group_id)
+    {
+        try {
+            if (empty($billing_group_id)) {
+                return false;
+            }
+
+            // Check if there's already an entry charge
+            $existing_entry = $this->get_entry_charge($billing_group_id);
+            if ($existing_entry) {
+                return true; // Already has an entry charge
+            }
+
+            // Get all charges for this billing group ordered by due date
+            $this->db->where('billing_group_id', $billing_group_id);
+            $this->db->order_by('due_date', 'ASC');
+            $this->db->order_by('created_at', 'ASC');
+            $charges = $this->db->get(db_prefix() . 'chargemanager_charges')->result();
+
+            if (empty($charges)) {
+                return false; // No charges to assign
+            }
+
+            // Set the first charge (earliest due date) as entry charge
+            $first_charge = $charges[0];
+            return $this->set_as_entry_charge($first_charge->id);
+
+        } catch (Exception $e) {
+            log_activity('ChargeManager Error auto-assigning entry charge: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Override delete method to handle entry charge reassignment
+     * @param int $id
+     * @return bool
+     */
+    public function delete($id)
+    {
+        try {
+            $charge = $this->get($id);
+            
+            if (!$charge) {
+                return false;
+            }
+
+            $billing_group_id = $charge->billing_group_id;
+            $was_entry_charge = $charge->is_entry_charge == 1;
+
+            // Delete the charge
+            $this->db->where('id', $id);
+            $deleted = $this->db->delete(db_prefix() . 'chargemanager_charges');
+
+            if ($deleted && $was_entry_charge && !empty($billing_group_id)) {
+                // Auto-assign new entry charge if the deleted one was the entry charge
+                $this->auto_assign_entry_charge($billing_group_id);
+            }
+
+            return $deleted;
+
+        } catch (Exception $e) {
+            log_activity('ChargeManager Error deleting charge: ' . $e->getMessage());
+            return false;
+        }
     }
 } 

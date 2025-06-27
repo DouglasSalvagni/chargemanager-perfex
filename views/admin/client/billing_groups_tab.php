@@ -162,12 +162,17 @@ render_datatable($table_data, 'billing-groups', ['table-responsive']);
 
 <!-- Charge Template -->
 <script type="text/html" id="charge-template">
-    <div class="charge-item panel panel-default" data-index="{index}">
+    <div class="charge-item panel panel-default" data-index="{index}" data-actual-index="{actualIndex}">
         <div class="panel-heading">
             <div class="row">
                 <div class="col-md-8">
                     <h4 class="panel-title">
-                        <i class="fa fa-credit-card"></i> <?php echo _l('chargemanager_charge'); ?> #{index}
+                        <i class="fa fa-credit-card"></i> <?php echo _l('chargemanager_charge'); ?> #{actualIndex}
+                        <span class="entry-charge-badge" style="display: none;">
+                            <span class="label label-primary" style="margin-left: 10px;">
+                                <i class="fa fa-star"></i> <?php echo _l('chargemanager_entry'); ?>
+                            </span>
+                        </span>
                     </h4>
                 </div>
                 <div class="col-md-4 text-right">
@@ -184,20 +189,20 @@ render_datatable($table_data, 'billing-groups', ['table-responsive']);
                         <label><?php echo _l('chargemanager_amount'); ?> <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <div class="input-group-addon"><?php echo get_base_currency()->symbol; ?></div>
-                            <input type="number" name="charges[{index}][amount]" class="form-control charge-amount" step="0.01" min="0.01" required>
+                            <input type="number" name="charges[{actualIndex}][amount]" class="form-control charge-amount" step="0.01" min="0.01" required>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="form-group">
                         <label><?php echo _l('chargemanager_due_date'); ?> <span class="text-danger">*</span></label>
-                        <input type="date" name="charges[{index}][due_date]" class="form-control" required>
+                        <input type="date" name="charges[{actualIndex}][due_date]" class="form-control" required>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="form-group">
                         <label><?php echo _l('chargemanager_billing_type'); ?> <span class="text-danger">*</span></label>
-                        <select name="charges[{index}][billing_type]" class="form-control" required>
+                        <select name="charges[{actualIndex}][billing_type]" class="form-control" required>
                             <option value=""><?php echo _l('chargemanager_select_billing_type'); ?></option>
                             <option value="PIX"><?php echo _l('chargemanager_billing_type_pix'); ?></option>
                             <option value="BOLETO"><?php echo _l('chargemanager_billing_type_boleto'); ?></option>
@@ -229,6 +234,27 @@ function chargemanager_client_tab_view_js() {
             content: " (Loading...)";
             color: #999;
             font-style: italic;
+        }
+        .entry-charge-item {
+            border-left: 4px solid #007bff !important;
+            background-color: #f8f9fa;
+        }
+        .entry-charge-item .panel-heading {
+            background-color: #e3f2fd !important;
+        }
+        .entry-charge-badge .label-primary {
+            background-color: #007bff;
+            font-size: 10px;
+            animation: pulse-entry 2s infinite;
+        }
+        @keyframes pulse-entry {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        .remove-charge:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
     </style>';
     echo '<script>';

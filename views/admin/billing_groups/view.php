@@ -301,9 +301,15 @@
                                     </thead>
                                     <tbody>
                                         <?php foreach ($charges as $charge): ?>
-                                            <tr>
+                                            <tr <?php echo ($charge->is_entry_charge == 1) ? 'class="entry-charge-row"' : ''; ?>>
                                                 <td>
-                                                    <strong>#<?php echo $charge->id; ?></strong><br>
+                                                    <strong>#<?php echo $charge->id; ?></strong>
+                                                    <?php if ($charge->is_entry_charge == 1): ?>
+                                                        <span class="label label-primary" style="margin-left: 5px;" title="<?php echo _l('chargemanager_entry_charge'); ?>">
+                                                            <i class="fa fa-star"></i> <?php echo _l('chargemanager_entry'); ?>
+                                                        </span>
+                                                    <?php endif; ?>
+                                                    <br>
                                                     <small class="text-muted"><?php echo $charge->gateway_charge_id ?? '-'; ?></small>
                                                 </td>
                                                 <td><?php echo app_format_money($charge->value, get_base_currency()); ?></td>
@@ -508,6 +514,32 @@
 </div>
 
 <?php init_tail(); ?>
+
+<style>
+.entry-charge-row {
+    background-color: #f8f9fa !important;
+    border-left: 4px solid #007bff !important;
+}
+
+.entry-charge-row:hover {
+    background-color: #e9ecef !important;
+}
+
+.label-primary {
+    background-color: #007bff;
+    font-size: 10px;
+}
+
+.entry-charge-row .label-primary {
+    animation: pulse-entry 2s infinite;
+}
+
+@keyframes pulse-entry {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+</style>
 
 <script>
     function showBarcode(barcode) {

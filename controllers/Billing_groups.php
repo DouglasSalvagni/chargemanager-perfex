@@ -300,6 +300,7 @@ class Billing_groups extends AdminController
                             'due_date' => $charge_data['due_date'],
                             'billing_type' => $charge_data['billing_type'],
                             'status' => 'pending',
+                            'is_entry_charge' => ($index === 0) ? 1 : 0, // First charge is entry charge
                             'invoice_url' => $gateway_result['invoice_url'] ?? null,
                             'barcode' => $gateway_result['barcode'] ?? null,
                             'pix_code' => $gateway_result['pix_code'] ?? null,
@@ -314,6 +315,11 @@ class Billing_groups extends AdminController
                                 'local_id' => $local_charge_id,
                                 'charge_number' => $charge_number
                             ];
+                            
+                            // Log entry charge assignment for first charge
+                            if ($index === 0) {
+                                log_activity('ChargeManager: Charge #' . $local_charge_id . ' automatically set as entry charge');
+                            }
                         } else {
                             $charges_failed[] = sprintf(_l('chargemanager_error_saving_charge_to_db_number'), $charge_number);
                         }
@@ -1139,5 +1145,83 @@ class Billing_groups extends AdminController
         $staff = $this->db->get(db_prefix() . 'staff')->result();
         
         echo json_encode($staff);
+    }
+
+    /**
+     * Set a charge as entry charge via AJAX
+     */
+    public function set_entry_charge()
+    {
+        if (!$this->input->is_ajax_request()) {
+            show_404();
+        }
+
+        if (!has_permission('chargemanager', '', 'edit')) {
+            echo json_encode(['success' => false, 'message' => _l('access_denied')]);
+            return;
+        }
+
+        $charge_id = $this->input->post('charge_id');
+
+        try {
+            if (empty($charge_id)) {
+                throw new Exception('Charge ID is required');
+            }
+
+            $result = $this->chargemanager_charges_model->set_as_entry_charge($charge_id);
+
+            if ($result) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Cobrança definida como entrada com sucesso'
+                ]);
+            } else {
+                throw new Exception('Failed to set charge as entry charge');
+            }
+
+        } catch (Exception $e) {
+            log_activity('ChargeManager Error setting entry charge: ' . $e->getMessage());
+            echo json_encode([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get entry charge for a billing group via AJAX
+     */
+    public function get_entry_charge()
+    {
+        if (!$this->input->is_ajax_request()) {
+            show_404();
+        }
+
+        if (!has_permission('chargemanager', '', 'view')) {
+            echo json_encode(['success' => false, 'message' => _l('access_denied')]);
+            return;
+        }
+
+        $billing_group_id = $this->input->post('billing_group_id');
+
+        try {
+            if (empty($billing_group_id)) {
+                throw new Exception('Billing group ID is required');
+            }
+
+            $entry_charge = $this->chargemanager_charges_model->get_entry_charge($billing_group_id);
+
+            echo json_encode([
+                'success' => true,
+                'entry_charge' => $entry_charge
+            ]);
+
+        } catch (Exception $e) {
+            log_activity('ChargeManager Error getting entry charge: ' . $e->getMessage());
+            echo json_encode([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
     }
 } 

@@ -190,14 +190,21 @@
                                         <th><?php echo _l('chargemanager_billing_type'); ?></th>
                                         <th><?php echo _l('chargemanager_status'); ?></th>
                                         <th><?php echo _l('chargemanager_invoice'); ?></th>
+                                        <th><?php echo _l('chargemanager_entry_charge'); ?></th>
                                         <th><?php echo _l('actions'); ?></th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($charges as $charge): ?>
-                                        <tr id="charge-row-<?php echo $charge->id; ?>">
+                                        <tr id="charge-row-<?php echo $charge->id; ?>" <?php echo ($charge->is_entry_charge == 1) ? 'class="entry-charge-row"' : ''; ?>>
                                             <td>
-                                                <strong>#<?php echo $charge->id; ?></strong><br>
+                                                <strong>#<?php echo $charge->id; ?></strong>
+                                                <?php if ($charge->is_entry_charge == 1): ?>
+                                                    <span class="label label-primary" style="margin-left: 5px;" title="<?php echo _l('chargemanager_entry_charge'); ?>">
+                                                        <i class="fa fa-star"></i> <?php echo _l('chargemanager_entry'); ?>
+                                                    </span>
+                                                <?php endif; ?>
+                                                <br>
                                                 <small class="text-muted"><?php echo $charge->gateway_charge_id ?? '-'; ?></small>
                                             </td>
                                             <td class="charge-value"><?php echo app_format_money($charge->value, get_base_currency()); ?></td>
@@ -252,6 +259,19 @@
                                                     </a>
                                                 <?php else: ?>
                                                     <span class="text-muted">-</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-center">
+                                                <?php if ($charge->is_entry_charge == 1): ?>
+                                                    <span class="label label-success">
+                                                        <i class="fa fa-check"></i> <?php echo _l('chargemanager_yes'); ?>
+                                                    </span>
+                                                <?php else: ?>
+                                                    <button type="button" class="btn btn-primary btn-xs" 
+                                                            onclick="setAsEntryCharge(<?php echo $charge->id; ?>)"
+                                                            title="<?php echo _l('chargemanager_set_as_entry'); ?>">
+                                                        <i class="fa fa-star"></i> <?php echo _l('chargemanager_set_entry'); ?>
+                                                    </button>
                                                 <?php endif; ?>
                                             </td>
                                             <td>
@@ -389,6 +409,32 @@
 
 <?php init_tail(); ?>
 
+<style>
+.entry-charge-row {
+    background-color: #f8f9fa !important;
+    border-left: 4px solid #007bff !important;
+}
+
+.entry-charge-row:hover {
+    background-color: #e9ecef !important;
+}
+
+.label-primary {
+    background-color: #007bff;
+    font-size: 10px;
+}
+
+.entry-charge-row .label-primary {
+    animation: pulse-entry 2s infinite;
+}
+
+@keyframes pulse-entry {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+</style>
+
 <script>
 // Charges data for JavaScript
 var chargesData = <?php echo json_encode($charges); ?>;
@@ -517,5 +563,34 @@ $('#editChargeModal').on('hidden.bs.modal', function() {
 function updateTotals() {
     // This could be enhanced to update totals without page reload
     // For now, we'll rely on page reload after changes
+}
+
+// Set charge as entry charge
+function setAsEntryCharge(chargeId) {
+    if (!confirm('<?php echo _l('chargemanager_confirm_set_entry_charge'); ?>')) {
+        return;
+    }
+    
+    $.ajax({
+        url: '<?php echo admin_url('chargemanager/billing_groups/set_entry_charge'); ?>',
+        type: 'POST',
+        data: {
+            charge_id: chargeId,
+            '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
+        },
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                alert_float('success', response.message);
+                // Reload page to show updated entry charge
+                location.reload();
+            } else {
+                alert_float('danger', response.message);
+            }
+        },
+        error: function() {
+            alert_float('danger', 'An error occurred');
+        }
+    });
 }
 </script>

@@ -78,6 +78,7 @@ if (!$CI->db->table_exists($db_prefix . 'chargemanager_charges')) {
         `due_date` DATE NOT NULL,
         `billing_type` VARCHAR(20) NOT NULL,
         `status` VARCHAR(20) NOT NULL,
+        `is_entry_charge` TINYINT(1) NOT NULL DEFAULT 0,
         `invoice_url` VARCHAR(255) DEFAULT NULL,
         `barcode` VARCHAR(255) DEFAULT NULL,
         `pix_code` TEXT DEFAULT NULL,
@@ -92,8 +93,27 @@ if (!$CI->db->table_exists($db_prefix . 'chargemanager_charges')) {
         KEY `client_id` (`client_id`),
         KEY `gateway_charge_id` (`gateway_charge_id`),
         KEY `billing_group_id` (`billing_group_id`),
-        KEY `payment_record_id` (`payment_record_id`)
+        KEY `payment_record_id` (`payment_record_id`),
+        KEY `is_entry_charge` (`is_entry_charge`)
     ) ENGINE=InnoDB DEFAULT CHARSET=" . $charset . ";");
+} else {
+    // Check if is_entry_charge column exists and add it if missing
+    $fields = $CI->db->field_data($db_prefix . 'chargemanager_charges');
+    $has_is_entry_charge = false;
+    
+    foreach ($fields as $field) {
+        if ($field->name === 'is_entry_charge') {
+            $has_is_entry_charge = true;
+            break;
+        }
+    }
+    
+    if (!$has_is_entry_charge) {
+        $CI->db->query('ALTER TABLE `' . $db_prefix . 'chargemanager_charges` 
+                       ADD COLUMN `is_entry_charge` TINYINT(1) NOT NULL DEFAULT 0 AFTER `status`,
+                       ADD KEY `is_entry_charge` (`is_entry_charge`)');
+        log_activity('ChargeManager: Added is_entry_charge column to charges table');
+    }
 }
 
 // 3. chargemanager_entity_mappings - Conforme relatório  

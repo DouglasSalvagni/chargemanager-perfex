@@ -198,6 +198,20 @@ $lang['chargemanager_error_invalid_amount'] = 'Charge %d: Amount must be a valid
 $lang['chargemanager_error_billing_type_required'] = 'Charge %d: Billing type is required';
 $lang['chargemanager_error_invalid_billing_type'] = 'Charge %d: Billing type must be BOLETO, PIX or CREDIT_CARD';
 $lang['chargemanager_error_saving_charge_to_db_number'] = 'Error saving charge %d to database';
+
+// Entry Charge Feature
+$lang['chargemanager_entry_charge'] = 'Entry Charge';
+$lang['chargemanager_entry'] = 'Entry';
+$lang['chargemanager_yes'] = 'Yes';
+$lang['chargemanager_no'] = 'No';
+$lang['chargemanager_set_entry'] = 'Set Entry';
+$lang['chargemanager_set_as_entry'] = 'Set as Entry Charge';
+$lang['chargemanager_confirm_set_entry_charge'] = 'Are you sure you want to set this charge as the entry charge? This will remove the entry flag from other charges.';
+$lang['chargemanager_entry_charge_set'] = 'Entry charge set successfully';
+$lang['chargemanager_entry_charge_auto_assigned'] = 'Entry charge automatically assigned to the earliest due date charge';
+$lang['chargemanager_confirm_delete_charge'] = 'Are you sure you want to delete this charge?';
+$lang['chargemanager_update_charge'] = 'Update Charge';
+$lang['chargemanager_edit_charge'] = 'Edit Charge';
 $lang['chargemanager_error_creating_charge_number'] = 'Error creating charge %d in gateway: %s';
 $lang['chargemanager_error_charge_exception'] = 'Unexpected error in charge %d: %s';
 $lang['chargemanager_error_no_charges_created'] = 'No charges were created successfully. Billing group was removed.';
