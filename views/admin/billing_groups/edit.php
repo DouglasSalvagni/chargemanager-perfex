@@ -33,10 +33,12 @@
                 </div>
 
                 <!-- Basic Information -->
+                <?php if (is_admin()): ?>
                 <div class="panel panel-default">
                     <div class="panel-heading">
                         <h5 class="panel-title">
                             <i class="fa fa-info-circle"></i> <?php echo _l('chargemanager_basic_information'); ?>
+                            <small class="text-muted">(<?php echo _l('admin_only'); ?>)</small>
                         </h5>
                     </div>
                     <div class="panel-body">
@@ -48,12 +50,14 @@
                                     <select name="sale_agent" id="sale_agent" class="form-control selectpicker" 
                                             data-live-search="true">
                                         <option value=""><?php echo _l('chargemanager_no_sale_agent'); ?></option>
-                                        <?php foreach($staff_members as $staff): ?>
-                                            <option value="<?php echo $staff['staffid']; ?>" 
-                                                    <?php echo ($billing_group->sale_agent == $staff['staffid']) ? 'selected' : ''; ?>>
-                                                <?php echo $staff['firstname'] . ' ' . $staff['lastname']; ?>
-                                            </option>
-                                        <?php endforeach; ?>
+                                        <?php if (!empty($staff_members)): ?>
+                                            <?php foreach($staff_members as $staff): ?>
+                                                <option value="<?php echo $staff['staffid']; ?>" 
+                                                        <?php echo ($billing_group->sale_agent == $staff['staffid']) ? 'selected' : ''; ?>>
+                                                    <?php echo $staff['firstname'] . ' ' . $staff['lastname']; ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
                                     </select>
                                 </div>
                             </div>
@@ -83,6 +87,7 @@
                         <?php echo form_close(); ?>
                     </div>
                 </div>
+                <?php endif; ?>
 
                 <!-- Summary Cards -->
                 <div class="row">

@@ -300,7 +300,7 @@ class Billing_groups extends AdminController
                             'due_date' => $charge_data['due_date'],
                             'billing_type' => $charge_data['billing_type'],
                             'status' => 'pending',
-                            'is_entry_charge' => ($index === 0) ? 1 : 0, // First charge is entry charge
+                            'is_entry_charge' => isset($charge_data['is_entry_charge']) ? intval($charge_data['is_entry_charge']) : (($index === 0) ? 1 : 0), // Use frontend value or fallback to index logic
                             'invoice_url' => $gateway_result['invoice_url'] ?? null,
                             'barcode' => $gateway_result['barcode'] ?? null,
                             'pix_code' => $gateway_result['pix_code'] ?? null,
@@ -615,6 +615,10 @@ class Billing_groups extends AdminController
             }
         }
 
+        // Get staff members for sale agent dropdown
+        $this->load->model('staff_model');
+        $staff_members = $this->staff_model->get('', ['active' => 1]);
+
         $data = [
             'billing_group' => $billing_group,
             'client' => $client,
@@ -622,6 +626,7 @@ class Billing_groups extends AdminController
             'charges' => $charges,
             'pending_charges' => $pending_charges,
             'total_paid' => $total_paid,
+            'staff_members' => $staff_members,
             'title' => _l('chargemanager_edit_billing_group')
         ];
         
@@ -635,6 +640,15 @@ class Billing_groups extends AdminController
     {
         if (!has_permission('chargemanager', '', 'edit')) {
             access_denied('chargemanager edit');
+        }
+
+        // Only admins can update basic information
+        if (!is_admin()) {
+            if ($this->input->is_ajax_request()) {
+                echo json_encode(['success' => false, 'message' => _l('access_denied')]);
+                return;
+            }
+            access_denied('admin required');
         }
 
         if (!$this->input->is_ajax_request() && $this->input->server('REQUEST_METHOD') !== 'POST') {
@@ -798,10 +812,11 @@ class Billing_groups extends AdminController
                 'due_date' => $charge_data['due_date'],
                 'billing_type' => $charge_data['billing_type'],
                 'status' => 'pending',
+                'is_entry_charge' => isset($charge_data['is_entry_charge']) ? intval($charge_data['is_entry_charge']) : 0, // New charges are not entry charges by default
                 'invoice_url' => $gateway_result['invoice_url'] ?? null,
                 'barcode' => $gateway_result['barcode'] ?? null,
                 'pix_code' => $gateway_result['pix_code'] ?? null,
-                'description' => $charge_data['description'] ?: 'Nova cobrança - Billing Group #' . $billing_group_id
+                'description' => 'Cobrança via ChargeManager - Billing Group #' . $billing_group_id
             ];
 
             $local_charge_id = $this->chargemanager_charges_model->create($local_charge_data);

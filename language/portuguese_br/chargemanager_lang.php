@@ -224,4 +224,42 @@ $lang['chargemanager_error_loading_contracts'] = 'Erro ao carregar contratos';
 $lang['chargemanager_contract_id_required'] = 'ID do contrato é obrigatório';
 $lang['chargemanager_contract_not_found'] = 'Contrato não encontrado';
 $lang['chargemanager_contract_invalid'] = 'Contrato inválido (não assinado, expirado ou sem valor)';
-$lang['chargemanager_error_loading_contract'] = 'Erro ao carregar detalhes do contrato'; 
+$lang['chargemanager_error_loading_contract'] = 'Erro ao carregar detalhes do contrato';
+
+// Sale Agent related translations
+$lang['chargemanager_sale_agent'] = 'Agente de Vendas';
+$lang['chargemanager_select_sale_agent'] = 'Selecionar Agente de Vendas';
+$lang['chargemanager_no_sale_agent'] = 'Nenhum Agente de Vendas';
+$lang['chargemanager_sale_agent_required'] = 'Agente de Vendas é obrigatório';
+$lang['chargemanager_invalid_sale_agent'] = 'Agente de Vendas inválido selecionado';
+$lang['chargemanager_sale_agent_info'] = 'Informações do Agente de Vendas';
+$lang['chargemanager_assigned_to'] = 'Atribuído a';
+
+// Additional translations for edit view
+$lang['chargemanager_basic_information'] = 'Informações Básicas';
+$lang['chargemanager_update_basic_info'] = 'Atualizar Informações Básicas';
+$lang['chargemanager_status_open'] = 'Aberto';
+$lang['chargemanager_status_partial'] = 'Parcial';
+$lang['chargemanager_status_completed'] = 'Concluído';
+$lang['chargemanager_status_overdue'] = 'Vencido';
+$lang['chargemanager_status_cancelled'] = 'Cancelado';
+
+// Entry Charge Feature
+$lang['chargemanager_entry_charge'] = 'Taxa de Entrada';
+$lang['chargemanager_entry'] = 'Entrada';
+$lang['chargemanager_yes'] = 'Sim';
+$lang['chargemanager_no'] = 'Não';
+$lang['chargemanager_set_entry'] = 'Definir Entrada';
+$lang['chargemanager_set_as_entry'] = 'Definir como Taxa de Entrada';
+$lang['chargemanager_confirm_set_entry_charge'] = 'Tem certeza que deseja definir esta cobrança como taxa de entrada? Isso removerá a marcação de entrada de outras cobranças.';
+$lang['chargemanager_entry_charge_set'] = 'Taxa de entrada definida com sucesso';
+$lang['chargemanager_entry_charge_auto_assigned'] = 'Taxa de entrada automaticamente atribuída à cobrança com data de vencimento mais próxima';
+$lang['chargemanager_confirm_delete_charge'] = 'Tem certeza que deseja excluir esta cobrança?';
+$lang['chargemanager_update_charge'] = 'Atualizar Cobrança';
+$lang['chargemanager_edit_charge'] = 'Editar Cobrança';
+
+// Original Lead Agent
+$lang['chargemanager_original_lead_agent'] = 'Agente de Lead Original';
+
+// Admin Only
+$lang['admin_only'] = 'Apenas Administradores'; 

@@ -422,12 +422,14 @@ $(document).ready(function() {
         $charges.removeClass('entry-charge-item');
         $charges.find('.entry-charge-badge').hide();
         $charges.find('.remove-charge').prop('disabled', false).prop('title', '');
+        $charges.find('.is-entry-charge').val('0'); // Reset all hidden fields
         
         if ($charges.length > 0) {
             // Mark first charge as entry charge
             var $firstCharge = $charges.first();
             $firstCharge.addClass('entry-charge-item');
             $firstCharge.find('.entry-charge-badge').show();
+            $firstCharge.find('.is-entry-charge').val('1'); // Set hidden field to 1
             
             // If there are multiple charges, disable removal of entry charge
             if ($charges.length > 1) {
@@ -460,6 +462,7 @@ $(document).ready(function() {
             $charge.find('input[name*="[amount]"]').attr('name', 'charges[' + index + '][amount]');
             $charge.find('input[name*="[due_date]"]').attr('name', 'charges[' + index + '][due_date]');
             $charge.find('select[name*="[billing_type]"]').attr('name', 'charges[' + index + '][billing_type]');
+            $charge.find('input[name*="[is_entry_charge]"]').attr('name', 'charges[' + index + '][is_entry_charge]');
             
             // Update data attributes
             $charge.attr('data-actual-index', newNumber);

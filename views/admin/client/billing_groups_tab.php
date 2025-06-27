@@ -183,6 +183,7 @@ render_datatable($table_data, 'billing-groups', ['table-responsive']);
             </div>
         </div>
         <div class="panel-body">
+            <input type="hidden" name="charges[{actualIndex}][is_entry_charge]" class="is-entry-charge" value="0">
             <div class="row">
                 <div class="col-md-4">
                     <div class="form-group">

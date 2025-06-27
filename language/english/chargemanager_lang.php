@@ -259,4 +259,7 @@ $lang['chargemanager_status_overdue'] = 'Overdue';
 $lang['chargemanager_status_cancelled'] = 'Cancelled';
 
 // Original Lead Agent
-$lang['chargemanager_original_lead_agent'] = 'Original Lead Agent'; 
+$lang['chargemanager_original_lead_agent'] = 'Original Lead Agent';
+
+// Admin Only
+$lang['admin_only'] = 'Admin Only'; 
