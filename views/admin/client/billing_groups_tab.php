@@ -19,6 +19,9 @@ if ($client_id > 0) {
 }
 ?>
 
+<!-- Campo client_id sempre disponível para JavaScript, independente de permissões -->
+<input type="hidden" id="billing-groups-client-id" value="<?php echo $client_id; ?>">
+
 <h4 class="no-margin"><?php echo _l('chargemanager_billing_groups'); ?></h4>
 <hr class="hr-panel-heading" />
 

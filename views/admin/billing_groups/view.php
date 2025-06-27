@@ -144,13 +144,21 @@
                                         <td>
                                             <?php
                                             $progress = $billing_group->total_amount > 0 ? ($total_paid / $billing_group->total_amount) * 100 : 0;
+                                            // Usar formato inteiro se for número inteiro, senão 1 decimal
+                                            $progress_formatted = ($progress == intval($progress)) ? number_format($progress, 0) : number_format($progress, 1);
+                                            $progress_id = 'progress-bar-' . $billing_group->id;
                                             ?>
-                                            <div class="progress">
-                                                <div class="progress-bar progress-bar-<?php echo $progress >= 100 ? 'success' : ($progress > 0 ? 'info' : 'warning'); ?>"
-                                                    style="width: <?php echo min($progress, 100); ?>%">
-                                                    <?php echo number_format($progress, 1); ?>%
+                                            <div class="progress no-margin">
+                                                <div id="<?php echo $progress_id; ?>" 
+                                                     class="progress-bar progress-bar-<?php echo $progress >= 100 ? 'success' : ($progress > 0 ? 'info' : 'warning'); ?>"
+                                                     role="progressbar" 
+                                                     aria-valuenow="<?php echo $progress_formatted; ?>"
+                                                     aria-valuemin="0" 
+                                                     aria-valuemax="100"
+                                                     style="width: <?php echo min($progress, 100); ?>">
                                                 </div>
                                             </div>
+                                            
                                         </td>
                                     </tr>
                                 </table>
@@ -656,6 +664,48 @@
     50% { opacity: 0.7; }
     100% { opacity: 1; }
 }
+
+/* Proteção para o texto da progress bar */
+.progress-bar .progress-text {
+    position: relative;
+    z-index: 10;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    display: inline-block !important;
+    visibility: visible !important;
+}
+
+.progress-bar {
+    position: relative;
+    text-align: center;
+    line-height: 20px;
+}
+
+/* Garantir que o texto seja sempre visível */
+.progress .progress-bar:empty:before {
+    content: attr(data-original-progress) '%';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    line-height: 20px;
+    font-weight: bold;
+    z-index: 10;
+}
+
+/* Fallback adicional para quando o span interno é removido */
+.progress .progress-bar:not(:empty):not(:has(.progress-text)):before {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    line-height: 20px;
+    font-weight: bold;
+    z-index: 10;
+    background: transparent;
+}
 </style>
 
 <script>
@@ -691,4 +741,25 @@
             text.textContent = '<?php echo _l('chargemanager_show_legend'); ?>';
         }
     }
+
+    // Inicialização do Progress Bar
+    function initProgressBar() {
+        var progressBar = $('#<?php echo $progress_id; ?>');
+        if (progressBar.length) {
+            var progressValue = progressBar.attr('aria-valuenow');
+            if (isNaN(progressValue)) progressValue = 0;
+            
+            // Atualiza o texto dentro da barra
+            progressBar.text(progressValue + '%');
+            
+            // Atualiza a largura da barra
+            progressBar.css('width', progressValue + '%');
+        }
+    }
+
+    // Executa quando o documento estiver pronto
+    $(document).ready(function() {
+        initProgressBar();
+    });
+
 </script>

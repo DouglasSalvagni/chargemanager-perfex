@@ -67,14 +67,23 @@ $(document).ready(function() {
         try {
             console.log('Initializing billing groups DataTable using Perfex native function'); // Debug log
             
-            // Get client ID for filtering
-            var clientId = $('input[name="client_id"]').val();
+            // Get client ID for filtering - usar campo dedicado que sempre existe
+            var clientId = $('#billing-groups-client-id').val();
+            
+            // Fallback para o campo do formulário se o dedicado não existir
+            if (!clientId) {
+                clientId = $('input[name="client_id"]').val();
+            }
+            
+            console.log('Client ID found:', clientId); // Debug log
             
             // Build AJAX URL with client filter
             var ajaxUrl = admin_url + 'chargemanager/billing_groups/ajax_billing_groups_table';
             if (clientId) {
                 ajaxUrl += '?client_id=' + encodeURIComponent(clientId);
             }
+            
+            console.log('AJAX URL:', ajaxUrl); // Debug log
             
             // Initialize DataTable using Perfex native function
             window.billingGroupsTable = initDataTable(

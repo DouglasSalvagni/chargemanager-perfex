@@ -511,6 +511,16 @@ class Billing_groups extends AdminController
             $where[] = 'AND 1 = 0';
         }
 
+        // Controle de permissões baseado em staff para usuários não administradores
+        if (!is_admin()) {
+            $current_staff_id = get_staff_user_id();
+            
+            // Permitir ver billing groups onde:
+            // 1. O usuário é o sale_agent
+            // 2. Não há sale_agent definido (NULL ou 0) - para compatibilidade com registros antigos
+            $where[] = 'AND (bg.sale_agent = ' . (int)$current_staff_id . ' OR bg.sale_agent IS NULL OR bg.sale_agent = 0)';
+        }
+
         // Campos adicionais a serem selecionados (não exibidos na tabela)
         $additionalSelect = [];
 
