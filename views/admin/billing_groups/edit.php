@@ -147,9 +147,11 @@
                                             $CI->load->model('chargemanager_billing_groups_model');
                                             $status_config = $CI->chargemanager_billing_groups_model->get_status_config($billing_group->status);
                                             ?>
-                                            <span class="label <?php echo $status_config['class']; ?>" style="font-size: 12px; padding: 4px 8px;">
+                                            <span class="label <?php echo $status_config['class']; ?>" style="font-size: 12px; padding: 4px 8px; cursor: pointer;" 
+                                                  onclick="showStatusLegendModal()" title="<?php echo _l('chargemanager_click_to_see_legend'); ?>">
                                                 <i class="fa <?php echo $status_config['icon']; ?>"></i> 
                                                 <?php echo $status_config['label']; ?>
+                                                <i class="fa fa-info-circle" style="margin-left: 5px; opacity: 0.7;"></i>
                                             </span>
                                         </div>
                                     </div>
@@ -159,127 +161,7 @@
                     </div>
                 </div>
 
-                <!-- Status Legend -->
-                <div class="panel panel-default">
-                    <div class="panel-heading">
-                        <h5 class="panel-title">
-                            <i class="fa fa-info-circle"></i> <?php echo _l('chargemanager_status_legend'); ?>
-                            <button type="button" class="btn btn-xs btn-default pull-right" onclick="toggleStatusLegend()">
-                                <i class="fa fa-eye" id="legend-toggle-icon"></i> <span id="legend-toggle-text"><?php echo _l('chargemanager_show_legend'); ?></span>
-                            </button>
-                        </h5>
-                    </div>
-                    <div class="panel-body" id="status-legend-content" style="display: none;">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <h6><strong><?php echo _l('chargemanager_completed_statuses'); ?></strong></h6>
-                                <div class="status-legend-item" style="margin-bottom: 8px;">
-                                    <span class="label label-success label-billing-status">
-                                        <i class="fa fa-check-circle"></i> <?php echo _l('chargemanager_status_completed_exact'); ?>
-                                    </span>
-                                    <br><small class="status-description"><?php echo _l('chargemanager_status_desc_completed_exact'); ?></small>
-                                </div>
-                                <div class="status-legend-item" style="margin-bottom: 8px;">
-                                    <span class="label label-success label-billing-status">
-                                        <i class="fa fa-arrow-up"></i> <?php echo _l('chargemanager_status_completed_over'); ?>
-                                    </span>
-                                    <br><small class="status-description"><?php echo _l('chargemanager_status_desc_completed_over'); ?></small>
-                                </div>
-                                <div class="status-legend-item" style="margin-bottom: 8px;">
-                                    <span class="label label-warning label-billing-status">
-                                        <i class="fa fa-arrow-down"></i> <?php echo _l('chargemanager_status_completed_under'); ?>
-                                    </span>
-                                    <br><small class="status-description"><?php echo _l('chargemanager_status_desc_completed_under'); ?></small>
-                                </div>
-                            </div>
 
-                            <div class="col-md-4">
-                                <h6><strong><?php echo _l('chargemanager_partial_statuses'); ?></strong></h6>
-                                <div class="status-legend-item" style="margin-bottom: 8px;">
-                                    <span class="label label-info label-billing-status">
-                                        <i class="fa fa-clock-o"></i> <?php echo _l('chargemanager_status_partial_on_track'); ?>
-                                    </span>
-                                    <br><small class="status-description"><?php echo _l('chargemanager_status_desc_partial_on_track'); ?></small>
-                                </div>
-                                <div class="status-legend-item" style="margin-bottom: 8px;">
-                                    <span class="label label-info label-billing-status">
-                                        <i class="fa fa-arrow-up"></i> <?php echo _l('chargemanager_status_partial_over'); ?>
-                                    </span>
-                                    <br><small class="status-description"><?php echo _l('chargemanager_status_desc_partial_over'); ?></small>
-                                </div>
-                                <div class="status-legend-item" style="margin-bottom: 8px;">
-                                    <span class="label label-warning label-billing-status">
-                                        <i class="fa fa-exclamation-triangle"></i> <?php echo _l('chargemanager_status_partial_under'); ?>
-                                    </span>
-                                    <br><small class="status-description"><?php echo _l('chargemanager_status_desc_partial_under'); ?></small>
-                                </div>
-
-                                <h6 style="margin-top: 10px;"><strong><?php echo _l('chargemanager_basic_statuses'); ?></strong></h6>
-                                <div class="status-legend-item" style="margin-bottom: 5px;">
-                                    <span class="label label-default label-billing-status">
-                                        <i class="fa fa-folder-open"></i> <?php echo _l('chargemanager_status_open'); ?>
-                                    </span>
-                                    <br><small class="status-description"><?php echo _l('chargemanager_status_desc_open'); ?></small>
-                                </div>
-                                <div class="status-legend-item" style="margin-bottom: 5px;">
-                                    <span class="label label-warning label-billing-status">
-                                        <i class="fa fa-exclamation-triangle"></i> <?php echo _l('chargemanager_status_incomplete'); ?>
-                                    </span>
-                                    <br><small class="status-description"><?php echo _l('chargemanager_status_desc_incomplete'); ?></small>
-                                </div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <h6><strong><?php echo _l('chargemanager_problem_statuses'); ?></strong></h6>
-                                <div class="status-legend-item" style="margin-bottom: 8px;">
-                                    <span class="label label-danger label-billing-status">
-                                        <i class="fa fa-exclamation-circle"></i> <?php echo _l('chargemanager_status_overdue_on_track'); ?>
-                                    </span>
-                                    <br><small class="status-description"><?php echo _l('chargemanager_status_desc_overdue_on_track'); ?></small>
-                                </div>
-                                <div class="status-legend-item" style="margin-bottom: 8px;">
-                                    <span class="label label-danger label-billing-status">
-                                        <i class="fa fa-exclamation-circle"></i> <?php echo _l('chargemanager_status_overdue_over'); ?>
-                                    </span>
-                                    <br><small class="status-description"><?php echo _l('chargemanager_status_desc_overdue_over'); ?></small>
-                                </div>
-                                <div class="status-legend-item" style="margin-bottom: 8px;">
-                                    <span class="label label-danger label-billing-status">
-                                        <i class="fa fa-exclamation-circle"></i> <?php echo _l('chargemanager_status_overdue_under'); ?>
-                                    </span>
-                                    <br><small class="status-description"><?php echo _l('chargemanager_status_desc_overdue_under'); ?></small>
-                                </div>
-                                <div class="status-legend-item" style="margin-bottom: 8px;">
-                                    <span class="label label-danger label-billing-status">
-                                        <i class="fa fa-times-circle"></i> <?php echo _l('chargemanager_status_cancelled'); ?>
-                                    </span>
-                                    <br><small class="status-description"><?php echo _l('chargemanager_status_desc_cancelled'); ?></small>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Editability Info -->
-                        <div class="row" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
-                            <div class="col-md-12">
-                                <h6><strong><?php echo _l('chargemanager_editability_rules'); ?></strong></h6>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="alert alert-success" style="padding: 10px;">
-                                            <i class="fa fa-edit"></i> <strong><?php echo _l('chargemanager_editable_statuses'); ?>:</strong><br>
-                                            <small><?php echo _l('chargemanager_editable_statuses_desc'); ?></small>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="alert alert-danger" style="padding: 10px;">
-                                            <i class="fa fa-lock"></i> <strong><?php echo _l('chargemanager_non_editable_statuses'); ?>:</strong><br>
-                                            <small><?php echo _l('chargemanager_non_editable_statuses_desc'); ?></small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- Summary Cards -->
                 <div class="row">
@@ -603,6 +485,135 @@
     </div>
 </div>
 
+<!-- Status Legend Modal -->
+<div class="modal fade" id="statusLegendModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title">
+                    <i class="fa fa-info-circle"></i> <?php echo _l('chargemanager_status_legend'); ?>
+                </h4>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6><strong><?php echo _l('chargemanager_completed_statuses'); ?></strong></h6>
+                        <div class="status-legend-item" style="margin-bottom: 8px;">
+                            <span class="label label-success label-billing-status">
+                                <i class="fa fa-check-circle"></i> <?php echo _l('chargemanager_status_completed_exact'); ?>
+                            </span>
+                            <br><small class="status-description"><?php echo _l('chargemanager_status_desc_completed_exact'); ?></small>
+                        </div>
+                        <div class="status-legend-item" style="margin-bottom: 8px;">
+                            <span class="label label-success label-billing-status">
+                                <i class="fa fa-arrow-up"></i> <?php echo _l('chargemanager_status_completed_over'); ?>
+                            </span>
+                            <br><small class="status-description"><?php echo _l('chargemanager_status_desc_completed_over'); ?></small>
+                        </div>
+                        <div class="status-legend-item" style="margin-bottom: 8px;">
+                            <span class="label label-warning label-billing-status">
+                                <i class="fa fa-arrow-down"></i> <?php echo _l('chargemanager_status_completed_under'); ?>
+                            </span>
+                            <br><small class="status-description"><?php echo _l('chargemanager_status_desc_completed_under'); ?></small>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <h6><strong><?php echo _l('chargemanager_partial_statuses'); ?></strong></h6>
+                        <div class="status-legend-item" style="margin-bottom: 8px;">
+                            <span class="label label-info label-billing-status">
+                                <i class="fa fa-clock-o"></i> <?php echo _l('chargemanager_status_partial_on_track'); ?>
+                            </span>
+                            <br><small class="status-description"><?php echo _l('chargemanager_status_desc_partial_on_track'); ?></small>
+                        </div>
+                        <div class="status-legend-item" style="margin-bottom: 8px;">
+                            <span class="label label-info label-billing-status">
+                                <i class="fa fa-arrow-up"></i> <?php echo _l('chargemanager_status_partial_over'); ?>
+                            </span>
+                            <br><small class="status-description"><?php echo _l('chargemanager_status_desc_partial_over'); ?></small>
+                        </div>
+                        <div class="status-legend-item" style="margin-bottom: 8px;">
+                            <span class="label label-warning label-billing-status">
+                                <i class="fa fa-exclamation-triangle"></i> <?php echo _l('chargemanager_status_partial_under'); ?>
+                            </span>
+                            <br><small class="status-description"><?php echo _l('chargemanager_status_desc_partial_under'); ?></small>
+                        </div>
+
+                        <h6 style="margin-top: 10px;"><strong><?php echo _l('chargemanager_basic_statuses'); ?></strong></h6>
+                        <div class="status-legend-item" style="margin-bottom: 5px;">
+                            <span class="label label-default label-billing-status">
+                                <i class="fa fa-folder-open"></i> <?php echo _l('chargemanager_status_open'); ?>
+                            </span>
+                            <br><small class="status-description"><?php echo _l('chargemanager_status_desc_open'); ?></small>
+                        </div>
+                        <div class="status-legend-item" style="margin-bottom: 5px;">
+                            <span class="label label-warning label-billing-status">
+                                <i class="fa fa-exclamation-triangle"></i> <?php echo _l('chargemanager_status_incomplete'); ?>
+                            </span>
+                            <br><small class="status-description"><?php echo _l('chargemanager_status_desc_incomplete'); ?></small>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <h6><strong><?php echo _l('chargemanager_problem_statuses'); ?></strong></h6>
+                        <div class="status-legend-item" style="margin-bottom: 8px;">
+                            <span class="label label-danger label-billing-status">
+                                <i class="fa fa-exclamation-circle"></i> <?php echo _l('chargemanager_status_overdue_on_track'); ?>
+                            </span>
+                            <br><small class="status-description"><?php echo _l('chargemanager_status_desc_overdue_on_track'); ?></small>
+                        </div>
+                        <div class="status-legend-item" style="margin-bottom: 8px;">
+                            <span class="label label-danger label-billing-status">
+                                <i class="fa fa-exclamation-circle"></i> <?php echo _l('chargemanager_status_overdue_over'); ?>
+                            </span>
+                            <br><small class="status-description"><?php echo _l('chargemanager_status_desc_overdue_over'); ?></small>
+                        </div>
+                        <div class="status-legend-item" style="margin-bottom: 8px;">
+                            <span class="label label-danger label-billing-status">
+                                <i class="fa fa-exclamation-circle"></i> <?php echo _l('chargemanager_status_overdue_under'); ?>
+                            </span>
+                            <br><small class="status-description"><?php echo _l('chargemanager_status_desc_overdue_under'); ?></small>
+                        </div>
+                        <div class="status-legend-item" style="margin-bottom: 8px;">
+                            <span class="label label-danger label-billing-status">
+                                <i class="fa fa-times-circle"></i> <?php echo _l('chargemanager_status_cancelled'); ?>
+                            </span>
+                            <br><small class="status-description"><?php echo _l('chargemanager_status_desc_cancelled'); ?></small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Editability Info -->
+                <div class="row" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
+                    <div class="col-md-12">
+                        <h6><strong><?php echo _l('chargemanager_editability_rules'); ?></strong></h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="alert alert-success" style="padding: 10px;">
+                                    <i class="fa fa-edit"></i> <strong><?php echo _l('chargemanager_editable_statuses'); ?>:</strong><br>
+                                    <small><?php echo _l('chargemanager_editable_statuses_desc'); ?></small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="alert alert-danger" style="padding: 10px;">
+                                    <i class="fa fa-lock"></i> <strong><?php echo _l('chargemanager_non_editable_statuses'); ?>:</strong><br>
+                                    <small><?php echo _l('chargemanager_non_editable_statuses_desc'); ?></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('close'); ?></button>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <?php init_tail(); ?>
 
@@ -616,27 +627,28 @@
         background-color: #e9ecef !important;
     }
 
-    .label-primary {
-        background-color: #007bff;
-        font-size: 10px;
+    /* Status label hover effect */
+    .label[onclick]:hover {
+        opacity: 0.8;
+        transition: opacity 0.2s ease;
     }
 
-    .entry-charge-row .label-primary {
-        animation: pulse-entry 2s infinite;
+    /* Modal styling for better readability */
+    .status-legend-item {
+        margin-bottom: 12px;
     }
 
-    @keyframes pulse-entry {
-        0% {
-            opacity: 1;
-        }
+    .label-billing-status {
+        font-size: 11px;
+        padding: 5px 8px;
+        display: inline-block;
+        margin-bottom: 3px;
+    }
 
-        50% {
-            opacity: 0.7;
-        }
-
-        100% {
-            opacity: 1;
-        }
+    .status-description {
+        color: #666;
+        font-style: italic;
+        line-height: 1.3;
     }
 </style>
 
@@ -799,20 +811,8 @@
         });
     }
 
-    // Toggle status legend
-    function toggleStatusLegend() {
-        var content = document.getElementById('status-legend-content');
-        var icon = document.getElementById('legend-toggle-icon');
-        var text = document.getElementById('legend-toggle-text');
-
-        if (content.style.display === 'none') {
-            content.style.display = 'block';
-            icon.className = 'fa fa-eye-slash';
-            text.textContent = '<?php echo _l('chargemanager_hide_legend'); ?>';
-        } else {
-            content.style.display = 'none';
-            icon.className = 'fa fa-eye';
-            text.textContent = '<?php echo _l('chargemanager_show_legend'); ?>';
-        }
+    // Show status legend modal
+    function showStatusLegendModal() {
+        $('#statusLegendModal').modal('show');
     }
 </script>

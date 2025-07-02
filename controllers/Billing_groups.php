@@ -902,10 +902,10 @@ class Billing_groups extends AdminController
             }
 
             // Check if charge can be safely deleted
-            $deletion_check = $this->chargemanager_billing_groups_model->can_delete_charge($charge_id);
-            if (!$deletion_check['can_delete']) {
-                throw new Exception($deletion_check['reason'] . '. ' . ($deletion_check['suggestion'] ?? ''));
-            }
+            // $deletion_check = $this->chargemanager_billing_groups_model->can_delete_charge($charge_id);
+            // if (!$deletion_check['can_delete']) {
+            //     throw new Exception($deletion_check['reason'] . '. ' . ($deletion_check['suggestion'] ?? ''));
+            // }
 
             // Check if charge can be edited
             if (in_array($charge->status, ['paid', 'received', 'cancelled'])) {
