@@ -297,12 +297,31 @@ class Webhook extends CI_Controller
                 ];
             }
 
-            // Update charge status to overdue
-            $this->db->where('id', $charge->id);
-            $this->db->update(db_prefix() . 'chargemanager_charges', [
-                'status' => 'overdue',
-                'updated_at' => date('Y-m-d H:i:s')
-            ]);
+            // Update charge status using the model's dedicated method
+            $updated = $this->chargemanager_charges_model->update_payment_status($charge_id, 'overdue');
+
+            if (!$updated) {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to update charge status'
+                ];
+            }
+
+            // Update related invoice status if exists
+            if (!empty($charge->perfex_invoice_id)) {
+                $this->load->model('invoices_model');
+                
+                // Get current invoice to validate
+                $invoice = $this->invoices_model->get($charge->perfex_invoice_id);
+                
+                if ($invoice && $invoice->status != 2) { // Only update if not already paid (status 2)
+                    // Update invoice status to overdue (status 4)
+                    $this->db->where('id', $charge->perfex_invoice_id);
+                    $this->db->update(db_prefix() . 'invoices', ['status' => 4]);
+                    
+                    log_activity('ChargeManager: Invoice #' . $charge->perfex_invoice_id . ' status updated to overdue due to charge #' . $charge->id);
+                }
+            }
 
             return [
                 'success' => true,

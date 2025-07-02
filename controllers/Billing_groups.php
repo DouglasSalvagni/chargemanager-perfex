@@ -901,12 +901,6 @@ class Billing_groups extends AdminController
                 throw new Exception('Charge not found');
             }
 
-            // Check if charge can be safely deleted
-            // $deletion_check = $this->chargemanager_billing_groups_model->can_delete_charge($charge_id);
-            // if (!$deletion_check['can_delete']) {
-            //     throw new Exception($deletion_check['reason'] . '. ' . ($deletion_check['suggestion'] ?? ''));
-            // }
-
             // Check if charge can be edited
             if (in_array($charge->status, ['paid', 'received', 'cancelled'])) {
                 throw new Exception('Cannot edit charge with status: ' . $charge->status);
@@ -1011,11 +1005,18 @@ class Billing_groups extends AdminController
                 }
             }
 
+            // Prepare success message
+            $success_message = 'Cobrança atualizada com sucesso';
+            if ($result['status_auto_updated'] ?? false) {
+                $success_message .= '. Status automaticamente alterado de vencido para pendente devido à data futura.';
+            }
+
             echo json_encode([
                 'success' => true,
-                'message' => 'Cobrança atualizada com sucesso',
+                'message' => $success_message,
                 'updated_fields' => array_keys($update_data),
-                'invoice_updated' => $result['invoice_updated'] ?? false
+                'invoice_updated' => $result['invoice_updated'] ?? false,
+                'status_auto_updated' => $result['status_auto_updated'] ?? false
             ]);
 
         } catch (Exception $e) {
@@ -1051,8 +1052,9 @@ class Billing_groups extends AdminController
             }
 
             // Check if charge can be deleted
-            if (in_array($charge->status, ['paid', 'received'])) {
-                throw new Exception('Cannot delete paid charge');
+            $deletion_check = $this->chargemanager_billing_groups_model->can_delete_charge($charge_id);
+            if (!$deletion_check['can_delete']) {
+                throw new Exception($deletion_check['reason'] . '. ' . ($deletion_check['suggestion'] ?? ''));
             }
 
             // Cancel charge in gateway first

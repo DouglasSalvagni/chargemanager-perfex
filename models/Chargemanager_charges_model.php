@@ -100,6 +100,12 @@ class Chargemanager_charges_model extends App_Model
                 if (!($options['allow_past_due_date'] ?? false) && strtotime($update_data['due_date']) < strtotime('today')) {
                     throw new Exception('Due date cannot be in the past');
                 }
+                
+                // Auto-update status from overdue to pending if date is moved to future
+                if ($current_charge->status === 'overdue' && strtotime($update_data['due_date']) >= strtotime('today')) {
+                    $update_data['status'] = 'pending';
+                    log_activity('ChargeManager: Charge #' . $charge_id . ' status automatically changed from overdue to pending due to future due date (' . $update_data['due_date'] . ')');
+                }
             }
 
             if (isset($update_data['billing_type'])) {
@@ -197,7 +203,8 @@ class Chargemanager_charges_model extends App_Model
                 'charge_id' => $charge_id,
                 'updated_fields' => array_keys($update_data),
                 'invoice_updated' => $invoice_update_result !== null,
-                'invoice_update_result' => $invoice_update_result
+                'invoice_update_result' => $invoice_update_result,
+                'status_auto_updated' => isset($update_data['status']) && $current_charge->status !== $update_data['status']
             ];
 
         } catch (Exception $e) {
@@ -815,6 +822,14 @@ class Chargemanager_charges_model extends App_Model
                 $invoice_update_data['subtotal'] = $new_value;
                 $invoice_update_data['total'] = $new_value;
                 $fields_updated[] = 'amounts';
+            }
+
+            // Update invoice status if charge status changed from overdue to pending
+            if ($previous_charge->status === 'overdue' && $updated_charge->status === 'pending') {
+                // Change invoice status from overdue (4) to unpaid (1)
+                $invoice_update_data['status'] = 1;
+                $fields_updated[] = 'status';
+                log_activity('ChargeManager: Invoice #' . $updated_charge->perfex_invoice_id . ' status changed from overdue to unpaid due to charge status change');
             }
 
             // Update invoice items if description or value changed

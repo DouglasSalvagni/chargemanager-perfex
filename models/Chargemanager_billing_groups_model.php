@@ -807,6 +807,15 @@ class Chargemanager_billing_groups_model extends App_Model
             return ['can_delete' => false, 'reason' => 'Charge not found'];
         }
 
+        // Check if charge status allows deletion
+        if (in_array($charge->status, ['paid', 'received'])) {
+            return [
+                'can_delete' => false, 
+                'reason' => 'Cannot delete paid charge',
+                'suggestion' => 'Paid charges cannot be deleted for audit and financial integrity reasons'
+            ];
+        }
+
         // Don't allow deletion if it would make billing group incomplete
         $validation = $this->validate_billing_group_completeness($charge->billing_group_id);
         
