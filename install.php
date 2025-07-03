@@ -201,5 +201,52 @@ foreach ($default_settings as $setting) {
     }
 }
 
+// 7. Criar Payment Modes para ChargeManager (integração com sistema nativo Perfex)
+$CI->load->model('payment_modes_model');
+
+$chargemanager_payment_modes = [
+    [
+        'name' => 'ChargeManager - Boleto',
+        'description' => 'Pagamento via Boleto Bancário processado pelo ChargeManager/ASAAS',
+        'show_on_pdf' => 1,
+        'selected_by_default' => 0,
+        'invoices_only' => 1,
+        'expenses_only' => 0,
+        'active' => 1
+    ],
+    [
+        'name' => 'ChargeManager - PIX',
+        'description' => 'Pagamento via PIX processado pelo ChargeManager/ASAAS',
+        'show_on_pdf' => 1,
+        'selected_by_default' => 0,
+        'invoices_only' => 1,
+        'expenses_only' => 0,
+        'active' => 1
+    ],
+    [
+        'name' => 'ChargeManager - Cartão de Crédito',
+        'description' => 'Pagamento via Cartão de Crédito processado pelo ChargeManager/ASAAS',
+        'show_on_pdf' => 1,
+        'selected_by_default' => 0,
+        'invoices_only' => 1,
+        'expenses_only' => 0,
+        'active' => 1
+    ]
+];
+
+foreach ($chargemanager_payment_modes as $mode_data) {
+    // Verificar se já existe um payment mode com este nome
+    $existing = $CI->db->where('name', $mode_data['name'])
+                        ->get(db_prefix() . 'payment_modes')
+                        ->row();
+    
+    if (!$existing) {
+        $mode_id = $CI->payment_modes_model->add($mode_data);
+        if ($mode_id) {
+            log_activity('ChargeManager: Payment mode "' . $mode_data['name'] . '" created with ID: ' . $mode_id);
+        }
+    }
+}
+
 // Log da instalação
 log_activity('ChargeManager module installed successfully'); 

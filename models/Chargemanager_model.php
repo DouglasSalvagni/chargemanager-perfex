@@ -446,4 +446,104 @@ class Chargemanager_model extends App_Model
 
         return $stats;
     }
+
+    // PAYMENT MODES METHODS
+
+    /**
+     * Get payment mode ID for billing type
+     * @param string $billing_type
+     * @return int|null
+     */
+    public function get_payment_mode_id_for_billing_type($billing_type)
+    {
+        $payment_mode_names = [
+            'BOLETO' => 'ChargeManager - Boleto',
+            'CREDIT_CARD' => 'ChargeManager - Cartão de Crédito',
+            'PIX' => 'ChargeManager - PIX'
+        ];
+        
+        $mode_name = $payment_mode_names[$billing_type] ?? $payment_mode_names['BOLETO'];
+        
+        $this->db->where('name', $mode_name);
+        $this->db->where('active', 1);
+        $payment_mode = $this->db->get(db_prefix() . 'payment_modes')->row();
+        
+        if ($payment_mode) {
+            return $payment_mode->id;
+        }
+        
+        // Fallback: buscar qualquer payment mode ativo para faturas
+        $this->db->where('active', 1);
+        $this->db->where('invoices_only', 1);
+        $fallback_mode = $this->db->get(db_prefix() . 'payment_modes')->row();
+        
+        return $fallback_mode ? $fallback_mode->id : 1; // 1 como último recurso
+    }
+
+    /**
+     * Get all ChargeManager payment modes
+     * @return array
+     */
+    public function get_chargemanager_payment_modes()
+    {
+        $this->db->like('name', 'ChargeManager -', 'after');
+        $this->db->where('active', 1);
+        return $this->db->get(db_prefix() . 'payment_modes')->result();
+    }
+
+    /**
+     * Ensure ChargeManager payment modes exist
+     * @return bool
+     */
+    public function ensure_payment_modes_exist()
+    {
+        $this->load->model('payment_modes_model');
+        
+        $required_modes = [
+            [
+                'name' => 'ChargeManager - Boleto',
+                'description' => 'Pagamento via Boleto Bancário processado pelo ChargeManager/ASAAS',
+                'billing_type' => 'BOLETO'
+            ],
+            [
+                'name' => 'ChargeManager - PIX',
+                'description' => 'Pagamento via PIX processado pelo ChargeManager/ASAAS',
+                'billing_type' => 'PIX'
+            ],
+            [
+                'name' => 'ChargeManager - Cartão de Crédito',
+                'description' => 'Pagamento via Cartão de Crédito processado pelo ChargeManager/ASAAS',
+                'billing_type' => 'CREDIT_CARD'
+            ]
+        ];
+        
+        $created_count = 0;
+        
+        foreach ($required_modes as $mode_data) {
+            // Verificar se já existe
+            $existing = $this->db->where('name', $mode_data['name'])
+                                ->get(db_prefix() . 'payment_modes')
+                                ->row();
+            
+            if (!$existing) {
+                $payment_mode_data = [
+                    'name' => $mode_data['name'],
+                    'description' => $mode_data['description'],
+                    'show_on_pdf' => 1,
+                    'selected_by_default' => 0,
+                    'invoices_only' => 1,
+                    'expenses_only' => 0,
+                    'active' => 1
+                ];
+                
+                $mode_id = $this->payment_modes_model->add($payment_mode_data);
+                if ($mode_id) {
+                    $created_count++;
+                    log_activity('ChargeManager: Payment mode "' . $mode_data['name'] . '" created with ID: ' . $mode_id);
+                }
+            }
+        }
+        
+        return $created_count > 0;
+    }
 } 

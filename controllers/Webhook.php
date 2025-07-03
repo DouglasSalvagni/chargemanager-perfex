@@ -451,14 +451,24 @@ class Webhook extends CI_Controller
      */
     private function get_payment_mode_id($billing_type)
     {
-        $payment_modes = [
-            'BOLETO' => 1,
-            'CREDIT_CARD' => 2,
-            'PIX' => 3,
-            'UNDEFINED' => 1
-        ];
-
-        return $payment_modes[$billing_type] ?? 1;
+        // Garantir que os payment modes existem
+        $this->chargemanager_model->ensure_payment_modes_exist();
+        
+        // Usar o método do modelo para buscar dinamicamente
+        $payment_mode_id = $this->chargemanager_model->get_payment_mode_id_for_billing_type($billing_type);
+        
+        if ($payment_mode_id) {
+            return $payment_mode_id;
+        }
+        
+        // Log de aviso se não encontrou payment mode adequado
+        log_activity('ChargeManager Warning: Payment mode not found for billing type: ' . $billing_type . ', using fallback');
+        
+        // Fallback para o primeiro payment mode ativo encontrado
+        $this->db->where('active', 1);
+        $fallback = $this->db->get(db_prefix() . 'payment_modes')->row();
+        
+        return $fallback ? $fallback->id : 1;
     }
 
     /**
