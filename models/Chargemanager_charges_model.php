@@ -18,11 +18,18 @@ class Chargemanager_charges_model extends App_Model
     {
         $data['created_at'] = date('Y-m-d H:i:s');
         $data['updated_at'] = date('Y-m-d H:i:s');
-        
+        // Preencher sale_agent a partir do billing group, se não informado
+        if (empty($data['sale_agent']) && !empty($data['billing_group_id'])) {
+            $this->db->select('sale_agent');
+            $this->db->where('id', $data['billing_group_id']);
+            $billing_group = $this->db->get(db_prefix() . 'chargemanager_billing_groups')->row();
+            if ($billing_group && !is_null($billing_group->sale_agent)) {
+                $data['sale_agent'] = $billing_group->sale_agent;
+            }
+        }
         if ($this->db->insert(db_prefix() . 'chargemanager_charges', $data)) {
             return $this->db->insert_id();
         }
-        
         return false;
     }
 

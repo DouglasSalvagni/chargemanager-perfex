@@ -74,6 +74,7 @@ if (!$CI->db->table_exists($db_prefix . 'chargemanager_charges')) {
         `billing_group_id` INT(11) NULL,
         `payment_record_id` INT(11) NULL,
         `client_id` INT(11) NOT NULL,
+        `sale_agent` INT(11) NULL DEFAULT NULL,
         `value` DECIMAL(15, 2) NOT NULL,
         `due_date` DATE NOT NULL,
         `billing_type` VARCHAR(20) NOT NULL,
@@ -94,25 +95,33 @@ if (!$CI->db->table_exists($db_prefix . 'chargemanager_charges')) {
         KEY `gateway_charge_id` (`gateway_charge_id`),
         KEY `billing_group_id` (`billing_group_id`),
         KEY `payment_record_id` (`payment_record_id`),
-        KEY `is_entry_charge` (`is_entry_charge`)
+        KEY `is_entry_charge` (`is_entry_charge`),
+        KEY `sale_agent` (`sale_agent`)
     ) ENGINE=InnoDB DEFAULT CHARSET=" . $charset . ";");
 } else {
     // Check if is_entry_charge column exists and add it if missing
     $fields = $CI->db->field_data($db_prefix . 'chargemanager_charges');
     $has_is_entry_charge = false;
-    
+    $has_sale_agent = false;
     foreach ($fields as $field) {
         if ($field->name === 'is_entry_charge') {
             $has_is_entry_charge = true;
-            break;
+        }
+        if ($field->name === 'sale_agent') {
+            $has_sale_agent = true;
         }
     }
-    
     if (!$has_is_entry_charge) {
         $CI->db->query('ALTER TABLE `' . $db_prefix . 'chargemanager_charges` 
                        ADD COLUMN `is_entry_charge` TINYINT(1) NOT NULL DEFAULT 0 AFTER `status`,
                        ADD KEY `is_entry_charge` (`is_entry_charge`)');
         log_activity('ChargeManager: Added is_entry_charge column to charges table');
+    }
+    if (!$has_sale_agent) {
+        $CI->db->query('ALTER TABLE `' . $db_prefix . 'chargemanager_charges` 
+                       ADD COLUMN `sale_agent` INT(11) NULL DEFAULT NULL AFTER `client_id`,
+                       ADD KEY `sale_agent` (`sale_agent`)');
+        log_activity('ChargeManager: Added sale_agent column to charges table');
     }
 }
 

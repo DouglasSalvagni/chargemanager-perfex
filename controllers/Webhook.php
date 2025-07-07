@@ -245,6 +245,18 @@ class Webhook extends CI_Controller
             $this->db->where('id', $charge->id);
             $this->db->update(db_prefix() . 'chargemanager_charges', $update_data);
 
+            // Buscar o registro atualizado da cobrança
+            $updated_charge = $this->chargemanager_charges_model->get($charge->id);
+
+            // Disparar hook customizado após pagamento
+            if (function_exists('hooks')) {
+                hooks()->do_action('after_chargemanager_charge_paid', $updated_charge);
+                // Se for cobrança de entrada, dispara hook específico
+                if (!empty($updated_charge->is_entry_charge) && intval($updated_charge->is_entry_charge) === 1) {
+                    hooks()->do_action('after_chargemanager_entry_charge_paid', $updated_charge);
+                }
+            }
+
             // Create payment record in Perfex
             if ($charge->perfex_invoice_id) {
                 $this->create_payment_record($charge, $payment_data);

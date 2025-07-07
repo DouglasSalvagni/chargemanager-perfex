@@ -279,7 +279,8 @@ class Billing_groups extends AdminController
                     $gateway_charge_data = [
                         'billing_group_id' => $billing_group_id,
                         'client_id' => $data['client_id'],
-                        'value' => floatval($charge_data['amount']), // Mapear 'amount' para 'value'
+                        'sale_agent' => $sale_agent,
+                        'value' => floatval($charge_data['amount']),
                         'due_date' => $charge_data['due_date'],
                         'billing_type' => $charge_data['billing_type'],
                         'description' => 'Cobrança via ChargeManager - Billing Group #' . $billing_group_id,
@@ -296,11 +297,12 @@ class Billing_groups extends AdminController
                             'gateway' => $gateway_result['gateway'] ?? 'asaas',
                             'billing_group_id' => $billing_group_id,
                             'client_id' => $data['client_id'],
+                            'sale_agent' => $sale_agent,
                             'value' => floatval($charge_data['amount']),
                             'due_date' => $charge_data['due_date'],
                             'billing_type' => $charge_data['billing_type'],
                             'status' => 'pending',
-                            'is_entry_charge' => isset($charge_data['is_entry_charge']) ? intval($charge_data['is_entry_charge']) : (($index === 0) ? 1 : 0), // Use frontend value or fallback to index logic
+                            'is_entry_charge' => isset($charge_data['is_entry_charge']) ? intval($charge_data['is_entry_charge']) : (($index === 0) ? 1 : 0),
                             'invoice_url' => $gateway_result['invoice_url'] ?? null,
                             'barcode' => $gateway_result['barcode'] ?? null,
                             'pix_code' => $gateway_result['pix_code'] ?? null,
@@ -809,6 +811,7 @@ class Billing_groups extends AdminController
             $gateway_charge_data = [
                 'billing_group_id' => $billing_group_id,
                 'client_id' => $billing_group->client_id,
+                'sale_agent' => $billing_group->sale_agent,
                 'value' => floatval($charge_data['value']),
                 'due_date' => $charge_data['due_date'],
                 'billing_type' => $charge_data['billing_type'],
@@ -828,6 +831,7 @@ class Billing_groups extends AdminController
                 'gateway' => 'asaas',
                 'billing_group_id' => $billing_group_id,
                 'client_id' => $billing_group->client_id,
+                'sale_agent' => $billing_group->sale_agent,
                 'value' => floatval($charge_data['value']),
                 'due_date' => $charge_data['due_date'],
                 'billing_type' => $charge_data['billing_type'],
