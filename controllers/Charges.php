@@ -109,7 +109,7 @@ class Charges extends AdminController
      */
     public function view($charge_id = null)
     {
-        if (!has_permission('chargemanager', '', 'view')) {
+        if (!has_permission('chargemanager', '', 'view') && !has_permission('chargemanager', '', 'view_own')) {
             access_denied('chargemanager view');
         }
 
@@ -206,7 +206,7 @@ class Charges extends AdminController
      */
     public function index()
     {
-        if (!has_permission('chargemanager', '', 'view')) {
+        if (!has_permission('chargemanager', '', 'view') && !has_permission('chargemanager', '', 'view_own')) {
             access_denied('chargemanager view');
         }
 
@@ -240,7 +240,7 @@ class Charges extends AdminController
             show_404();
         }
 
-        if (!has_permission('chargemanager', '', 'view')) {
+        if (!has_permission('chargemanager', '', 'view') && !has_permission('chargemanager', '', 'view_own')) {
             ajax_access_denied();
         }
 

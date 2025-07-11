@@ -22,7 +22,7 @@ class Billing_groups extends AdminController
             show_404();
         }
 
-        if (!has_permission('chargemanager', '', 'view')) {
+        if (!has_permission('chargemanager', '', 'view') && !has_permission('chargemanager', '', 'view_own')) {
             echo json_encode(['success' => false, 'message' => _l('access_denied')]);
             return;
         }
@@ -101,7 +101,7 @@ class Billing_groups extends AdminController
             show_404();
         }
 
-        if (!has_permission('chargemanager', '', 'view')) {
+        if (!has_permission('chargemanager', '', 'view') && !has_permission('chargemanager', '', 'view_own')) {
             echo json_encode(['success' => false, 'message' => _l('access_denied')]);
             return;
         }
@@ -417,7 +417,7 @@ class Billing_groups extends AdminController
      */
     public function view($id)
     {
-        if (!has_permission('chargemanager', '', 'view')) {
+        if (!has_permission('chargemanager', '', 'view') && !has_permission('chargemanager', '', 'view_own')) {
             access_denied('chargemanager view');
         }
 
@@ -480,7 +480,7 @@ class Billing_groups extends AdminController
             show_404();
         }
 
-        if (!has_permission('chargemanager', '', 'view')) {
+        if (!has_permission('chargemanager', '', 'view_own') && !has_permission('chargemanager', '', 'view')) {
             ajax_access_denied();
         }
 
@@ -514,7 +514,7 @@ class Billing_groups extends AdminController
         }
 
         // Controle de permissões baseado em staff para usuários não administradores
-        if (!is_admin()) {
+        if (!is_admin() && !has_permission('chargemanager', '', 'view')) {
             $current_staff_id = get_staff_user_id();
             
             // Permitir ver billing groups onde:
@@ -1244,7 +1244,7 @@ class Billing_groups extends AdminController
             show_404();
         }
 
-        if (!has_permission('chargemanager', '', 'view')) {
+        if (!has_permission('chargemanager', '', 'view') && !has_permission('chargemanager', '', 'view_own')) {
             echo json_encode(['success' => false, 'message' => _l('access_denied')]);
             return;
         }

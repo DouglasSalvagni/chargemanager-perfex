@@ -15,7 +15,7 @@ class Settings extends AdminController
      */
     public function index()
     {
-        if (!has_permission('chargemanager', '', 'view')) {
+        if (!is_admin()) {
             access_denied('chargemanager settings');
         }
 
@@ -113,7 +113,7 @@ class Settings extends AdminController
             show_404();
         }
 
-        if (!has_permission('chargemanager', '', 'view')) {
+        if (!is_admin()) {
             echo json_encode(['success' => false, 'message' => _l('access_denied')]);
             return;
         }

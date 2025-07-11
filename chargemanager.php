@@ -52,7 +52,7 @@ function chargemanager_module_init_menu_items()
 {
     $CI = &get_instance();
 
-    if (has_permission('chargemanager', '', 'view')) {
+    if (is_admin()) {
         $CI->app_menu->add_sidebar_menu_item('chargemanager', [
             'name'     => _l('chargemanager'),
             'href'     => admin_url('chargemanager/settings'),
@@ -78,10 +78,11 @@ function chargemanager_permissions()
     $capabilities = [];
 
     $capabilities['capabilities'] = [
-        'view'   => _l('permission_view') . '(' . _l('permission_global') . ')',
-        'create' => _l('permission_create'),
-        'edit'   => _l('permission_edit'),
-        'delete' => _l('permission_delete'),
+        'view'     => _l('permission_view') . ' (' . _l('permission_global') . ')',
+        'view_own' => _l('permission_view_own'),
+        'create'   => _l('permission_create'),
+        'edit'     => _l('permission_edit'),
+        'delete'   => _l('permission_delete')
     ];
 
     register_staff_capabilities('chargemanager', $capabilities, _l('chargemanager'));
@@ -98,9 +99,9 @@ function chargemanager_after_client_added($client_id)
     $CI = &get_instance();
     $CI->load->library(CHARGEMANAGER_MODULE_NAME . '/Gateway_manager');
     
-    $CI->gateway_manager->get_or_create_customer($client_id);
     try {
         // Create customer using unified Gateway Manager
+        $CI->gateway_manager->get_or_create_customer($client_id);
     } catch (Exception $e) {
         // Log error but don't break the client creation process
         log_activity('ChargeManager: Failed to sync new client to gateway - ' . $e->getMessage());
@@ -212,7 +213,7 @@ function chargemanager_after_payment_added($payment_id)
 {
     // Process payment linking to charges if needed
     $CI = &get_instance();
-    $CI->load->model('chargemanager_charges_model');
+    $CI->load->model('chargemanager/chargemanager_charges_model');
     
     try {
         $CI->chargemanager_charges_model->link_payment_to_charges($payment_id);
