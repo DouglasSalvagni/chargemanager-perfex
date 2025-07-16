@@ -16,6 +16,7 @@ node_modules/
 .idea
 .vscode
 .cursor
+.kiro
 *.suo
 *.ntvs*
 *.njsproj
