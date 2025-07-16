@@ -12,14 +12,14 @@ if ($CI->db->table_exists($db_prefix . 'chargemanager_billing_groups')) {
     // Check if invoice_id column exists and remove it
     $fields = $CI->db->field_data($db_prefix . 'chargemanager_billing_groups');
     $has_invoice_id = false;
-    
+
     foreach ($fields as $field) {
         if ($field->name === 'invoice_id') {
             $has_invoice_id = true;
             break;
         }
     }
-    
+
     if ($has_invoice_id) {
         // Drop the invoice_id column as we now use individual invoices per charge
         $CI->db->query('ALTER TABLE `' . $db_prefix . 'chargemanager_billing_groups` DROP COLUMN `invoice_id`');
@@ -48,14 +48,14 @@ if (!$CI->db->table_exists($db_prefix . 'chargemanager_billing_groups')) {
     // Check if sale_agent column exists and add it if missing
     $fields = $CI->db->field_data($db_prefix . 'chargemanager_billing_groups');
     $has_sale_agent = false;
-    
+
     foreach ($fields as $field) {
         if ($field->name === 'sale_agent') {
             $has_sale_agent = true;
             break;
         }
     }
-    
+
     if (!$has_sale_agent) {
         $CI->db->query('ALTER TABLE `' . $db_prefix . 'chargemanager_billing_groups` 
                        ADD COLUMN `sale_agent` INT(11) NULL DEFAULT NULL AFTER `contract_id`,
@@ -193,6 +193,24 @@ if (!$CI->db->table_exists($db_prefix . 'chargemanager_asaas_settings')) {
     ) ENGINE=InnoDB DEFAULT CHARSET=" . $charset . ";");
 }
 
+// 7. chargemanager_contract_billing_schemas - Para armazenar schemas de cobrança de contratos
+if (!$CI->db->table_exists($db_prefix . 'chargemanager_contract_billing_schemas')) {
+    $CI->db->query('CREATE TABLE `' . $db_prefix . "chargemanager_contract_billing_schemas` (
+        `id` INT(11) NOT NULL AUTO_INCREMENT,
+        `contract_id` INT(11) NOT NULL,
+        `schema_type` VARCHAR(20) NOT NULL DEFAULT 'manual',
+        `frequency` VARCHAR(20) NULL DEFAULT NULL,
+        `installment_value` DECIMAL(15,2) NULL DEFAULT NULL,
+        `schema_data` LONGTEXT NULL,
+        `created_at` DATETIME NOT NULL,
+        `updated_at` DATETIME NOT NULL,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `contract_id` (`contract_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=" . $charset . ";");
+
+    log_activity('ChargeManager: Contract billing schemas table created');
+}
+
 // Inserir configurações padrão do ASAAS
 $default_settings = [
     ['name' => 'api_key', 'value' => ''],
@@ -204,7 +222,7 @@ $default_settings = [
 foreach ($default_settings as $setting) {
     $CI->db->where('name', $setting['name']);
     $existing = $CI->db->get($db_prefix . 'chargemanager_asaas_settings')->row();
-    
+
     if (!$existing) {
         $CI->db->insert($db_prefix . 'chargemanager_asaas_settings', $setting);
     }
@@ -246,9 +264,9 @@ $chargemanager_payment_modes = [
 foreach ($chargemanager_payment_modes as $mode_data) {
     // Verificar se já existe um payment mode com este nome
     $existing = $CI->db->where('name', $mode_data['name'])
-                        ->get(db_prefix() . 'payment_modes')
-                        ->row();
-    
+        ->get(db_prefix() . 'payment_modes')
+        ->row();
+
     if (!$existing) {
         $mode_id = $CI->payment_modes_model->add($mode_data);
         if ($mode_id) {
@@ -258,4 +276,4 @@ foreach ($chargemanager_payment_modes as $mode_data) {
 }
 
 // Log da instalação
-log_activity('ChargeManager module installed successfully'); 
+log_activity('ChargeManager module installed successfully');

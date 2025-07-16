@@ -26,6 +26,7 @@ $CI = &get_instance();
  * Load the module helpers
  */
 $CI->load->helper(CHARGEMANAGER_MODULE_NAME . '/chargemanager');
+$CI->load->helper(CHARGEMANAGER_MODULE_NAME . '/contract_billing_schema');
 
 hooks()->add_action('app_init', 'chargemanager_load_translations');
 
@@ -98,7 +99,7 @@ function chargemanager_after_client_added($client_id)
 {
     $CI = &get_instance();
     $CI->load->library(CHARGEMANAGER_MODULE_NAME . '/Gateway_manager');
-    
+
     try {
         // Create customer using unified Gateway Manager
         $CI->gateway_manager->get_or_create_customer($client_id);
@@ -112,7 +113,7 @@ function chargemanager_after_client_updated($client_id)
 {
     $CI = &get_instance();
     $CI->load->library(CHARGEMANAGER_MODULE_NAME . '/Gateway_manager');
-    
+
     try {
         // Update customer using unified Gateway Manager
         $CI->gateway_manager->update_customer($client_id);
@@ -126,7 +127,7 @@ function chargemanager_after_client_deleted($client_id)
 {
     $CI = &get_instance();
     $CI->load->library(CHARGEMANAGER_MODULE_NAME . '/Gateway_manager');
-    
+
     try {
         // Delete customer using unified Gateway Manager
         $CI->gateway_manager->delete_customer($client_id);
@@ -142,7 +143,7 @@ hooks()->add_filter('customer_profile_tabs', 'chargemanager_add_billing_groups_t
 function chargemanager_add_billing_groups_tab($tabs)
 {
     $CI = &get_instance();
-    
+
     // Only show tab if user has permission to view chargemanager
     if (has_permission('chargemanager', '', 'view')) {
         $tabs['billing_groups'] = [
@@ -153,7 +154,7 @@ function chargemanager_add_billing_groups_tab($tabs)
             'position' => 15,
         ];
     }
-    
+
     return $tabs;
 }
 
@@ -165,7 +166,7 @@ hooks()->add_action('app_init', 'chargemanager_handle_webhooks');
 function chargemanager_handle_webhooks()
 {
     $CI = &get_instance();
-    
+
     // Check if this is a webhook request
     if (strpos($CI->uri->uri_string(), 'chargemanager/webhook') !== false) {
         // Remove output buffering for webhooks
@@ -181,21 +182,21 @@ hooks()->add_action('app_admin_head', 'chargemanager_load_admin_assets');
 function chargemanager_load_admin_assets()
 {
     $CI = &get_instance();
-    
+
     // Load assets only on relevant pages
     $uri = $CI->uri->uri_string();
     $load_assets = false;
-    
+
     // Load on chargemanager pages
     if (strpos($uri, 'chargemanager') !== false) {
         $load_assets = true;
     }
-    
+
     // Load on client pages for billing groups tab
     if (strpos($uri, 'clients/client/') !== false) {
         $load_assets = true;
     }
-    
+
     if ($load_assets) {
         echo '<link href="' . module_dir_url(CHARGEMANAGER_MODULE_NAME, 'assets/css/chargemanager.css') . '" rel="stylesheet" type="text/css" />';
         echo '<style>
@@ -214,10 +215,10 @@ function chargemanager_after_payment_added($payment_id)
     // Process payment linking to charges if needed
     $CI = &get_instance();
     $CI->load->model('chargemanager/chargemanager_charges_model');
-    
+
     try {
         $CI->chargemanager_charges_model->link_payment_to_charges($payment_id);
     } catch (Exception $e) {
         log_activity('ChargeManager: Failed to link payment to charges - ' . $e->getMessage());
     }
-} 
+}
