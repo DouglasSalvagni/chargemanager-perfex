@@ -450,19 +450,41 @@ hooks()->add_filter('before_contract_added', 'process_contract_billing_schema_on
 hooks()->add_action('after_contract_added', 'save_contract_billing_schema_after_add');
 hooks()->add_filter('before_contract_updated', 'process_contract_billing_schema_on_update', 10, 2);
 hooks()->add_filter('contract_merge_fields', 'meu_modulo_adicionar_merge_fields', 10, 2);
+hooks()->add_filter('available_merge_fields', 'meu_modulo_adicionar_available_merge_fields');
 
-function meu_modulo_adicionar_merge_fields($fields, $data) {
+function meu_modulo_adicionar_available_merge_fields($available)
+{
+     // Adicionar novos campos na categoria 'contract'
+     foreach ($available as $key => $merge_fields) {
+        if (isset($merge_fields['contract'])) {
+            $available[$key]['contract'][] = [
+                'name' => 'Forma de Pagamento',
+                'key' => '{forma_de_pagamento}',
+                'available' => ['contract'],
+                'format' => [
+                    'base_name' => 'meu_modulo_merge_fields',
+                    'file' => 'meu_modulo/meu_merge_fields'
+                ]
+            ];
+        }
+    }
+    
+    return $available;
+}
+
+function meu_modulo_adicionar_merge_fields($fields, $data)
+{
     $contract_id = $data['id'];
     $contract = $data['contract'];
-    
+
     // Buscar dados do seu módulo
     $CI = &get_instance();
     $CI->db->where('contract_id', $contract_id);
     $contract = $CI->db->get(db_prefix() . 'chargemanager_contract_billing_schemas')->row();
-    
+
     // Adicionar o novo merge field
     $fields['{forma_de_pagamento}'] = $contract ? $contract->schema_data : '';
-    
+
     return $fields;
 }
 
