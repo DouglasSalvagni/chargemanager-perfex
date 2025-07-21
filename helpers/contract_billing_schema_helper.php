@@ -445,17 +445,116 @@ function save_contract_billing_schema($contract_id, $schema_data)
     log_activity('Contract Billing Schema: Schema atualizado para o contrato #' . $contract_id);
 }
 
-// Registrar hooks para processamento de dados
-hooks()->add_filter('before_contract_added', 'process_contract_billing_schema_on_add');
-hooks()->add_action('after_contract_added', 'save_contract_billing_schema_after_add');
-hooks()->add_filter('before_contract_updated', 'process_contract_billing_schema_on_update', 10, 2);
-hooks()->add_filter('contract_merge_fields', 'meu_modulo_adicionar_merge_fields', 10, 2);
-hooks()->add_filter('available_merge_fields', 'meu_modulo_adicionar_available_merge_fields');
+//Hooks para possibilitar edição de informações ao contrato
+hooks()->add_filter('contract_merge_fields', 'merge_payment_method_fields', 10, 2);
+hooks()->add_filter('available_merge_fields', 'add_payment_method_option_merge_fields');
 
-function meu_modulo_adicionar_available_merge_fields($available)
+function merge_payment_method_fields($fields, $data)
 {
-     // Adicionar novos campos na categoria 'contract'
-     foreach ($available as $key => $merge_fields) {
+    $contract_id = $data['id'];
+    $contract = $data['contract'];
+
+    // Buscar dados do seu módulo
+    $CI = &get_instance();
+    $CI->db->where('contract_id', $contract_id);
+    $billing_schema = $CI->db->get(db_prefix() . 'chargemanager_contract_billing_schemas')->row();
+
+    $payment_method_html = '';
+
+    if ($billing_schema && !empty($billing_schema->schema_data)) {
+        $charges_data = json_decode($billing_schema->schema_data, true);
+
+        if (!empty($charges_data) && is_array($charges_data)) {
+            // Mapeamento dos tipos de cobrança
+            $billing_type_map = [
+                'PIX' => 'PIX',
+                'BOLETO' => 'Boleto Bancário',
+                'CREDIT_CARD' => 'Cartão de Crédito'
+            ];
+
+            // Obter símbolo da moeda
+            $currency_symbol = get_base_currency()->symbol ?? 'R$';
+
+            // Iniciar tabela HTML
+            $payment_method_html = '<table style="width: 100%; border-collapse: collapse; margin: 10px 0;">';
+            $payment_method_html .= '<thead>';
+            $payment_method_html .= '<tr style="background-color: #f8f9fa;">';
+            $payment_method_html .= '<th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Parcela</th>';
+            $payment_method_html .= '<th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Valor</th>';
+            $payment_method_html .= '<th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Vencimento</th>';
+            $payment_method_html .= '<th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Forma de Pagamento</th>';
+            $payment_method_html .= '<th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Observações</th>';
+            $payment_method_html .= '</tr>';
+            $payment_method_html .= '</thead>';
+            $payment_method_html .= '<tbody>';
+
+            foreach ($charges_data as $index => $charge) {
+                $parcela_numero = $index + 1;
+
+                // Formatar valor monetário
+                $valor_formatado = $currency_symbol . ' ' . number_format(floatval($charge['amount']), 2, ',', '.');
+
+                // Formatar data de dd-mm-Y
+                $data_vencimento = '';
+                if (!empty($charge['due_date'])) {
+                    $date = DateTime::createFromFormat('Y-m-d', $charge['due_date']);
+                    if ($date) {
+                        $data_vencimento = $date->format('d/m/Y');
+                    } else {
+                        $data_vencimento = $charge['due_date'];
+                    }
+                }
+
+                // Mapear tipo de cobrança
+                $forma_pagamento = $billing_type_map[$charge['billing_type']] ?? $charge['billing_type'];
+
+                // Verificar se é entrada
+                $observacoes = '';
+                if (isset($charge['is_entry_charge']) && $charge['is_entry_charge'] == 1) {
+                    $observacoes = '<strong style="color: #007bff;">Valor de Entrada</strong>';
+                }
+
+                // Estilo da linha para entrada
+                $row_style = '';
+                if (isset($charge['is_entry_charge']) && $charge['is_entry_charge'] == 1) {
+                    $row_style = 'background-color: #e3f2fd;';
+                }
+
+                $payment_method_html .= '<tr style="' . $row_style . '">';
+                $payment_method_html .= '<td style="border: 1px solid #dee2e6; padding: 8px;">' . $parcela_numero . 'ª Parcela</td>';
+                $payment_method_html .= '<td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">' . $valor_formatado . '</td>';
+                $payment_method_html .= '<td style="border: 1px solid #dee2e6; padding: 8px; text-align: center;">' . $data_vencimento . '</td>';
+                $payment_method_html .= '<td style="border: 1px solid #dee2e6; padding: 8px;">' . $forma_pagamento . '</td>';
+                $payment_method_html .= '<td style="border: 1px solid #dee2e6; padding: 8px;">' . $observacoes . '</td>';
+                $payment_method_html .= '</tr>';
+            }
+
+            $payment_method_html .= '</tbody>';
+            $payment_method_html .= '</table>';
+
+            // Adicionar resumo
+            $total_parcelas = count($charges_data);
+            $valor_total = array_sum(array_column($charges_data, 'amount'));
+            $valor_total_formatado = $currency_symbol . ' ' . number_format($valor_total, 2, ',', '.');
+
+            $payment_method_html .= '<div style="margin-top: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 4px;">';
+            $payment_method_html .= '<strong>Resumo do Pagamento:</strong><br>';
+            $payment_method_html .= 'Total de Parcelas: ' . $total_parcelas . '<br>';
+            $payment_method_html .= 'Valor Total: ' . $valor_total_formatado;
+            $payment_method_html .= '</div>';
+        }
+    }
+
+    // Adicionar o novo merge field
+    $fields['{forma_de_pagamento}'] = $payment_method_html;
+
+    return $fields;
+}
+
+function add_payment_method_option_merge_fields($available)
+{
+    // Adicionar novos campos na categoria 'contract'
+    foreach ($available as $key => $merge_fields) {
         if (isset($merge_fields['contract'])) {
             $available[$key]['contract'][] = [
                 'name' => 'Forma de Pagamento',
@@ -468,25 +567,14 @@ function meu_modulo_adicionar_available_merge_fields($available)
             ];
         }
     }
-    
+
     return $available;
 }
 
-function meu_modulo_adicionar_merge_fields($fields, $data)
-{
-    $contract_id = $data['id'];
-    $contract = $data['contract'];
-
-    // Buscar dados do seu módulo
-    $CI = &get_instance();
-    $CI->db->where('contract_id', $contract_id);
-    $contract = $CI->db->get(db_prefix() . 'chargemanager_contract_billing_schemas')->row();
-
-    // Adicionar o novo merge field
-    $fields['{forma_de_pagamento}'] = $contract ? $contract->schema_data : '';
-
-    return $fields;
-}
+// Registrar hooks para processamento de dados
+hooks()->add_filter('before_contract_added', 'process_contract_billing_schema_on_add');
+hooks()->add_action('after_contract_added', 'save_contract_billing_schema_after_add');
+hooks()->add_filter('before_contract_updated', 'process_contract_billing_schema_on_update', 10, 2);
 
 
 /**
