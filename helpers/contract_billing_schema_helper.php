@@ -765,5 +765,5 @@ function create_charges_on_contract_signed($contract_id)
 }
 
 // Registrar hooks para criação de cobranças quando um contrato é assinado
-hooks()->add_action('contract_marked_as_signed', 'create_charges_on_contract_signed');
-hooks()->add_action('after_contract_signed', 'create_charges_on_contract_signed');
+hooks()->add_action('after_contract_was_signed', 'create_charges_on_contract_signed');
+hooks()->add_action('after_contract_was_marked_as_signed', 'create_charges_on_contract_signed');
