@@ -164,7 +164,7 @@ function add_contract_billing_schema_fields($contract = null)
     echo '<div class="row">';
 
     // Frequência
-    echo '<div class="col-md-4">';
+    echo '<div class="col-md-6">';
     echo '<div class="form-group">';
     echo '<label for="frequency" class="control-label">Frequência</label>';
     echo '<select name="frequency" id="frequency" class="form-control selectpicker">';
@@ -177,7 +177,7 @@ function add_contract_billing_schema_fields($contract = null)
     echo '</div>';
 
     // Valor da parcela
-    echo '<div class="col-md-4">';
+    echo '<div class="col-md-6">';
     echo '<div class="form-group">';
     echo '<label for="installment_value" class="control-label">Valor por Parcela</label>';
     echo '<div class="input-group">';
@@ -187,8 +187,16 @@ function add_contract_billing_schema_fields($contract = null)
     echo '</div>';
     echo '</div>';
 
+    // Data da primeira parcela
+    echo '<div class="col-md-6">';
+    echo '<div class="form-group">';
+    echo '<label for="first_installment_date" class="control-label">Data da 1ª Parcela</label>';
+    echo '<input type="date" name="first_installment_date" id="first_installment_date" class="form-control" value="' . date('Y-m-d', strtotime('+1 month')) . '">';
+    echo '</div>';
+    echo '</div>';
+
     // Botão para gerar schema
-    echo '<div class="col-md-4">';
+    echo '<div class="col-md-6">';
     echo '<div class="form-group" style="margin-top: 25px;">';
     echo '<button type="button" id="generate-schema" class="btn btn-info">Gerar Parcelas</button>';
     echo '</div>';
@@ -200,7 +208,7 @@ function add_contract_billing_schema_fields($contract = null)
     // Configuração manual (apenas o botão de adicionar cobrança)
     echo '<div id="manual-schema-config" class="schema-config" style="' . ($schema_type == 'manual' ? '' : 'display: none;') . '">';
     echo '<div class="text-right" style="margin-top: 10px;">';
-    echo '<button type="button" id="add-charge" class="btn btn-info btn-sm">';
+    echo '<button type="button" id="add-contract-charge" class="btn btn-info btn-sm">';
     echo '<i class="fa fa-plus"></i> Adicionar Cobrança';
     echo '</button>';
     echo '</div>';
@@ -312,8 +320,11 @@ function add_contract_billing_schema_fields($contract = null)
         </div>
     </script>';
 
-    // Registrar o arquivo JavaScript para ser carregado no footer
-    hooks()->add_action('app_admin_footer', 'contract_billing_schema_js');
+    // Marcar que o JavaScript deve ser carregado
+    if (!defined('CONTRACT_BILLING_SCHEMA_JS_LOADED')) {
+        define('CONTRACT_BILLING_SCHEMA_JS_LOADED', true);
+        hooks()->add_action('app_admin_footer', 'contract_billing_schema_js');
+    }
 }
 
 /**
@@ -325,7 +336,7 @@ function contract_billing_schema_js()
 }
 
 // Registrar o hook para adicionar campos na edição de contratos
-hooks()->add_action('contract_extra_fields', 'add_contract_billing_schema_fields');
+hooks()->add_action('contract_extra_fields', 'add_contract_billing_schema_fields', 20);
 
 /**
  * Processar e salvar os dados do schema de cobrança antes de adicionar um contrato
@@ -337,6 +348,7 @@ function process_contract_billing_schema_on_add($data)
         'schema_type',
         'frequency',
         'installment_value',
+        'first_installment_date',
         'schema_data'
     ];
 
@@ -388,6 +400,7 @@ function process_contract_billing_schema_on_update($data, $id = null)
         'schema_type',
         'frequency',
         'installment_value',
+        'first_installment_date',
         'schema_data'
     ];
 
