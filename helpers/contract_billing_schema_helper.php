@@ -638,11 +638,18 @@ function create_charges_on_contract_signed($contract_id)
     $CI->db->trans_begin();
 
     try {
+        // Determinar sale_agent: prioridade para lead staff original, fallback para criador do contrato
+        $sale_agent = $CI->chargemanager_billing_groups_model->get_client_original_lead_staff($contract->client);
+
+        if (!$sale_agent) {
+            $sale_agent = $contract->addedfrom; // Fallback para o criador do contrato
+        }
+
         // Criar billing group
         $billing_group_data = [
             'client_id' => $contract->client,
             'contract_id' => $contract_id,
-            'sale_agent' => $contract->addedfrom, // Usar o criador do contrato como sale_agent
+            'sale_agent' => $sale_agent,
             'status' => 'open',
             'total_amount' => $contract->contract_value
         ];
