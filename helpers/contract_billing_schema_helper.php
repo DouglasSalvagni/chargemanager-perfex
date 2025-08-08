@@ -76,6 +76,12 @@ function add_contract_billing_schema_fields($contract = null)
     $CI = &get_instance();
     $contract_id = isset($contract) ? $contract->id : null;
 
+    // Verificar se o contrato está assinado
+    $is_contract_signed = false;
+    if ($contract) {
+        $is_contract_signed = ($contract->signed == 1) || ($contract->marked_as_signed == 1);
+    }
+
     // Carregar schema existente se estiver editando um contrato
     $schema = null;
     if ($contract_id) {
@@ -97,6 +103,28 @@ function add_contract_billing_schema_fields($contract = null)
             border-radius: 4px;
             padding: 15px;
             background-color: #f9f9f9;
+        }
+        .billing-schema-container.frozen {
+            background-color: #f5f5f5;
+            border-color: #ccc;
+            opacity: 0.8;
+        }
+        .billing-schema-container.frozen input,
+        .billing-schema-container.frozen select,
+        .billing-schema-container.frozen button {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        .frozen-notice {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .frozen-notice i {
+            margin-right: 5px;
         }
         .schema-type-selector {
             margin-bottom: 15px;
@@ -139,9 +167,17 @@ function add_contract_billing_schema_fields($contract = null)
     </style>';
 
     // Início do container principal
-    echo '<div class="billing-schema-container">';
+    echo '<div class="billing-schema-container' . ($is_contract_signed ? ' frozen' : '') . '">';
     echo '<h4 class="font-medium text-muted">Configuração de Cobranças</h4>';
     echo '<hr class="hr-panel-separator" />';
+
+    // Mostrar aviso se o contrato estiver assinado
+    if ($is_contract_signed) {
+        echo '<div class="frozen-notice">';
+        echo '<i class="fa fa-lock"></i>';
+        echo '<strong>Contrato Assinado:</strong> A configuração de cobranças não pode ser editada pois o contrato já foi assinado.';
+        echo '</div>';
+    }
 
     // Campo oculto para armazenar o schema JSON
     echo '<input type="hidden" name="schema_data" id="schema_data" value="' . htmlspecialchars($schema_data) . '">';
@@ -336,6 +372,22 @@ function add_contract_billing_schema_fields($contract = null)
  */
 function contract_billing_schema_js()
 {
+    // Obter informações do contrato se estivermos na página de edição
+    $is_contract_signed = false;
+    if (isset($_GET['id']) && is_numeric($_GET['id'])) {
+        $CI = &get_instance();
+        $CI->db->where('id', $_GET['id']);
+        $contract = $CI->db->get(db_prefix() . 'contracts')->row();
+        
+        if ($contract) {
+            $is_contract_signed = ($contract->signed == 1 || $contract->marked_as_signed == 1);
+        }
+    }
+    
+    echo '<script>';
+    echo 'window.contractBillingConfig = window.contractBillingConfig || {};';
+    echo 'window.contractBillingConfig.isContractSigned = ' . ($is_contract_signed ? 'true' : 'false') . ';';
+    echo '</script>';
     echo '<script src="' . module_dir_url('chargemanager', 'assets/js/contract_billing_schema.js') . '"></script>';
 }
 

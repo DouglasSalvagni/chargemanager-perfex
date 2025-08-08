@@ -6,9 +6,21 @@
 $(document).ready(function () {
     'use strict';
 
+    // Verificar se o contrato está assinado
+    if (window.contractBillingConfig && window.contractBillingConfig.isContractSigned) {
+        // Se o contrato estiver assinado, não inicializar funcionalidades
+        return;
+    }
+
     var chargeIndex = 0;
     var contractValue = 0;
     var schemaData = [];
+
+    // Inicializar na carga da página
+    setTimeout(function () {
+        initContractValue();
+        updateFormValidation();
+    }, 500);
 
     // Inicializar com o valor do contrato
     function initContractValue() {
@@ -366,10 +378,4 @@ $(document).ready(function () {
         $("#contract_value_display").val(formatMoney(contractValue));
         calculateTotals();
     });
-
-    // Inicializar na carga da página
-    setTimeout(function () {
-        initContractValue();
-        updateFormValidation();
-    }, 500);
 });
