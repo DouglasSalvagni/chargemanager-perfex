@@ -201,6 +201,7 @@ if (!$CI->db->table_exists($db_prefix . 'chargemanager_contract_billing_schemas'
         `schema_type` VARCHAR(20) NOT NULL DEFAULT 'manual',
         `frequency` VARCHAR(20) NULL DEFAULT NULL,
         `installment_value` DECIMAL(15,2) NULL DEFAULT NULL,
+        `first_installment_date` DATE NULL DEFAULT NULL,
         `schema_data` LONGTEXT NULL,
         `created_at` DATETIME NOT NULL,
         `updated_at` DATETIME NOT NULL,

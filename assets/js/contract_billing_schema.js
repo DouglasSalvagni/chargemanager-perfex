@@ -39,7 +39,7 @@ $(document).ready(function () {
 
     // Renderizar schema salvo
     function renderSavedSchema() {
-        $("#charges-list").empty();
+        $("#contract-charges-list").empty();
         chargeIndex = 0;
 
         if (schemaData && schemaData.length > 0) {
@@ -58,13 +58,20 @@ $(document).ready(function () {
         if (type === "auto") {
             $("#manual-schema-config").hide();
             $("#auto-schema-config").show();
+            // Adicionar validação apenas quando necessário
+            $("#installment_value").attr("min", "0.01");
         } else {
             $("#auto-schema-config").hide();
             $("#manual-schema-config").show();
+            // Remover validação quando não necessário
+            $("#installment_value").removeAttr("min");
         }
 
         // A lista de cobranças é sempre visível
         $(".charges-container").show();
+        
+        // Atualizar validação do formulário
+        updateFormValidation();
     });
 
     // Gerar schema baseado na frequência
@@ -100,7 +107,7 @@ $(document).ready(function () {
         var lastInstallmentValue = contractValue - (installmentValue * (numInstallments - 1));
 
         // Limpar cobranças existentes
-        $("#charges-list").empty();
+        $("#contract-charges-list").empty();
         schemaData = [];
         chargeIndex = 0;
 
@@ -146,6 +153,7 @@ $(document).ready(function () {
         updateEntryChargeStatus();
         calculateTotals();
         updateSchemaJson();
+        updateFormValidation();
     }
 
     // Adicionar cobrança
@@ -154,6 +162,7 @@ $(document).ready(function () {
         updateEntryChargeStatus();
         calculateTotals();
         updateSchemaJson();
+        updateFormValidation();
     });
 
     // Remover cobrança (evento delegado)
@@ -171,10 +180,17 @@ $(document).ready(function () {
         updateEntryChargeStatus();
         calculateTotals();
         updateSchemaJson();
+        updateFormValidation();
     });
 
     // Atualizar totais quando valores são alterados
     $(document).on("input", ".charge-amount", function () {
+        // Validar valor mínimo sem bloquear o formulário
+        var value = parseFloat($(this).val());
+        if (value < 0) {
+            $(this).val(0);
+        }
+        
         calculateTotals();
         updateSchemaJson();
     });
@@ -183,23 +199,22 @@ $(document).ready(function () {
         updateSchemaJson();
     });
 
-    // Adicionar cobrança
-    function addCharge(data) {
+    // Adicionar nova cobrança
+    function addCharge(chargeData) {
         chargeIndex++;
-        var template = $("#charge-template").html();
+        var template = $("#contract-charge-template").html();
         template = template.replace(/{index}/g, chargeIndex);
-
         var $charge = $(template);
-        $("#charges-list").append($charge);
+        $("#contract-charges-list").append($charge);
 
         // Preencher dados se fornecidos
-        if (data) {
-            $charge.find(".charge-amount").val(data.amount);
-            $charge.find(".charge-due-date").val(data.due_date);
-            $charge.find(".charge-billing-type").val(data.billing_type);
-            $charge.find(".is-entry-charge").val(data.is_entry_charge);
+        if (chargeData) {
+            $charge.find(".charge-amount").val(chargeData.amount);
+            $charge.find(".charge-due-date").val(chargeData.due_date);
+            $charge.find(".charge-billing-type").val(chargeData.billing_type);
+            $charge.find(".is-entry-charge").val(chargeData.is_entry_charge);
 
-            if (data.is_entry_charge === 1) {
+            if (chargeData.is_entry_charge === 1) {
                 $charge.addClass("entry-charge-item");
                 $charge.find(".entry-charge-badge").show();
             }
@@ -288,6 +303,63 @@ $(document).ready(function () {
         return parseFloat(amount).toFixed(2);
     }
 
+    // Atualizar validação do formulário
+    function updateFormValidation() {
+        var schemaType = $("#schema_type").val();
+        var $installmentValue = $("#installment_value");
+        var $frequency = $("#frequency");
+
+        if (schemaType === "auto") {
+            // Em modo automático, validar apenas se o usuário tentar gerar parcelas
+            $installmentValue.attr("min", "0.01");
+            $frequency.prop("required", false); // Não tornar obrigatório para envio do form
+        } else {
+            // Em modo manual, remover todas as validações dos campos automáticos
+            $installmentValue.removeAttr("min").removeAttr("required");
+            $frequency.removeAttr("required");
+        }
+        
+        // Se não há cobranças geradas, remover validações para permitir envio
+        if ($(".charge-item").length === 0) {
+            $installmentValue.removeAttr("required");
+            $frequency.removeAttr("required");
+        }
+    }
+
+    // Interceptar envio do formulário para validação customizada
+    $(document).on("submit", "form", function (e) {
+        // Verificar se este formulário contém nossos campos
+        if ($("#schema_type").length === 0) {
+            return true; // Não é o formulário de contrato, permitir envio normal
+        }
+        
+        var schemaType = $("#schema_type").val();
+        
+        if (schemaType === "auto") {
+            var $installmentValue = $("#installment_value");
+            var installmentValue = parseFloat($installmentValue.val()) || 0;
+            
+            // Se está em modo automático mas não há cobranças geradas, permitir envio
+            if ($(".charge-item").length === 0) {
+                // Remover temporariamente a validação para permitir envio
+                $installmentValue.removeAttr("min").removeAttr("required");
+                $("#frequency").removeAttr("required");
+                
+                // Limpar valores para evitar problemas de validação
+                if (installmentValue <= 0) {
+                    $installmentValue.val("");
+                }
+            }
+        } else {
+            // Em modo manual, garantir que não há validações ativas
+            $("#installment_value").removeAttr("min").removeAttr("required");
+            $("#frequency").removeAttr("required");
+        }
+        
+        // Permitir envio normal do formulário
+        return true;
+    });
+
     // Monitorar mudanças no campo contract_value
     $("input[name='contract_value']").on("input", function () {
         contractValue = parseFloat($(this).val()) || 0;
@@ -298,5 +370,6 @@ $(document).ready(function () {
     // Inicializar na carga da página
     setTimeout(function () {
         initContractValue();
+        updateFormValidation();
     }, 500);
 });

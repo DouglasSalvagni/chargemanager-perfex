@@ -21,6 +21,7 @@ function create_contract_billing_schema_table()
               `schema_type` varchar(20) NOT NULL DEFAULT 'manual', /* 'auto' ou 'manual' */
               `frequency` varchar(20) NULL DEFAULT NULL, /* 'weekly', 'biweekly', 'monthly', etc. */
               `installment_value` decimal(15,2) NULL DEFAULT NULL,
+              `first_installment_date` date NULL DEFAULT NULL, /* Data da primeira parcela */
               `schema_data` LONGTEXT NULL, /* JSON com o schema de cobranças */
               `created_at` datetime NOT NULL,
               `updated_at` datetime NOT NULL,
@@ -51,6 +52,7 @@ function create_contract_billing_schema_table()
                         'schema_type' => $schema['schema_type'],
                         'frequency' => $schema['frequency'],
                         'installment_value' => $schema['installment_value'],
+                        'first_installment_date' => $schema['first_installment_date'] ?? null,
                         'schema_data' => $schema['schema_data'],
                         'created_at' => $schema['created_at'],
                         'updated_at' => $schema['updated_at']
@@ -182,16 +184,17 @@ function add_contract_billing_schema_fields($contract = null)
     echo '<label for="installment_value" class="control-label">Valor por Parcela</label>';
     echo '<div class="input-group">';
     echo '<div class="input-group-addon">' . get_base_currency()->symbol . '</div>';
-    echo '<input type="number" name="installment_value" id="installment_value" class="form-control" step="0.01" min="0.01" value="' . $installment_value . '">';
+    echo '<input type="number" name="installment_value" id="installment_value" class="form-control" step="0.01" value="' . $installment_value . '">';
     echo '</div>';
     echo '</div>';
     echo '</div>';
 
     // Data da primeira parcela
+    $first_installment_date = $schema ? $schema->first_installment_date : date('Y-m-d', strtotime('+1 week'));
     echo '<div class="col-md-6">';
     echo '<div class="form-group">';
     echo '<label for="first_installment_date" class="control-label">Data da 1ª Parcela</label>';
-    echo '<input type="date" name="first_installment_date" id="first_installment_date" class="form-control" value="' . date('Y-m-d', strtotime('+1 month')) . '">';
+    echo '<input type="date" name="first_installment_date" id="first_installment_date" class="form-control" value="' . $first_installment_date . '">';
     echo '</div>';
     echo '</div>';
 
@@ -262,7 +265,7 @@ function add_contract_billing_schema_fields($contract = null)
     echo '</div>';
 
     // Lista de cobranças
-    echo '<div class="charges-list" id="charges-list" style="margin-top: 15px;">';
+    echo '<div class="charges-list" id="contract-charges-list" style="margin-top: 15px;">';
     // As cobranças serão adicionadas dinamicamente via JavaScript
     echo '</div>';
 
@@ -271,7 +274,8 @@ function add_contract_billing_schema_fields($contract = null)
     echo '</div>'; // Fim do container principal
 
     // Template para item de cobrança (será usado pelo JavaScript)
-    echo '<script type="text/html" id="charge-template">
+    $currency_symbol = get_base_currency()->symbol;
+    echo '<script type="text/html" id="contract-charge-template">
         <div class="charge-item" data-index="{index}">
             <div class="row">
                 <div class="col-md-8">
@@ -293,8 +297,8 @@ function add_contract_billing_schema_fields($contract = null)
                     <div class="form-group">
                         <label>Valor</label>
                         <div class="input-group">
-                            <div class="input-group-addon">' . get_base_currency()->symbol . '</div>
-                            <input type="number" class="form-control charge-amount" step="0.01" min="0.01" value="">
+                            <div class="input-group-addon">' . htmlspecialchars($currency_symbol) . '</div>
+                            <input type="number" class="form-control charge-amount" step="0.01" value="">
                         </div>
                     </div>
                 </div>
@@ -440,6 +444,7 @@ function save_contract_billing_schema($contract_id, $schema_data)
         'schema_type' => $schema_data['schema_type'] ?? 'manual',
         'frequency' => $schema_data['frequency'] ?? null,
         'installment_value' => $schema_data['installment_value'] ?? null,
+        'first_installment_date' => $schema_data['first_installment_date'] ?? null,
         'schema_data' => $schema_data['schema_data'] ?? null,
         'updated_at' => date('Y-m-d H:i:s')
     ];
