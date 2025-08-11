@@ -221,7 +221,7 @@ render_datatable($table_data, 'billing-groups', ['table-responsive']);
 
 <?php
 // Registrar o JavaScript no footer
-add_hook('app_admin_footer', 'chargemanager_client_tab_view_js');
+hooks()->add_action('app_admin_footer', 'chargemanager_client_tab_view_js');
 
 function chargemanager_client_tab_view_js()
 {

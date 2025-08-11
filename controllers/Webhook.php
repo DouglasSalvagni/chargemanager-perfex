@@ -5,7 +5,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 class Webhook extends CI_Controller
 {
     const TOKEN_HEADER = 'X-Webhook-Token';
-    
+
     public function __construct()
     {
         parent::__construct();
@@ -31,7 +31,7 @@ class Webhook extends CI_Controller
 
             // Get webhook payload
             $payload = $this->get_webhook_payload();
-            
+
             if (!$payload) {
                 $this->json_response(['success' => false, 'message' => 'Invalid payload'], 400);
                 return;
@@ -39,7 +39,7 @@ class Webhook extends CI_Controller
 
             // Queue webhook for processing
             $queue_id = $this->queue_webhook($payload);
-            
+
             // Process webhook immediately
             $result = $this->process_webhook($queue_id);
 
@@ -51,7 +51,6 @@ class Webhook extends CI_Controller
                 // "Not found" cases are now handled as success in the specific methods
                 $this->json_response(['success' => false, 'message' => $result['message']], 500);
             }
-
         } catch (Exception $e) {
             log_activity('ChargeManager Webhook Error: ' . $e->getMessage());
             $this->json_response(['success' => false, 'message' => 'Internal error'], 500);
@@ -75,13 +74,13 @@ class Webhook extends CI_Controller
     private function get_webhook_payload()
     {
         $raw_input = file_get_contents('php://input');
-        
+
         if (empty($raw_input)) {
             return null;
         }
 
         $payload = json_decode($raw_input, true);
-        
+
         if (json_last_error() !== JSON_ERROR_NONE) {
             return null;
         }
@@ -95,8 +94,8 @@ class Webhook extends CI_Controller
     private function queue_webhook($payload)
     {
         // Log the payload for debugging
-        log_activity('ChargeManager: Webhook payload - Event: ' . ($payload['event'] ?? 'unknown') . 
-                    ', Payment ID: ' . ($payload['payment']['id'] ?? 'N/A'));
+        log_activity('ChargeManager: Webhook payload - Event: ' . ($payload['event'] ?? 'unknown') .
+            ', Payment ID: ' . ($payload['payment']['id'] ?? 'N/A'));
 
         $queue_data = [
             'gateway' => 'asaas',
@@ -135,7 +134,7 @@ class Webhook extends CI_Controller
             ]);
 
             $payload = json_decode($webhook->payload, true);
-            
+
             // Process based on event type
             $result = $this->process_event($payload);
 
@@ -160,7 +159,6 @@ class Webhook extends CI_Controller
                 log_activity('ChargeManager Webhook Error: ' . $result['message']);
                 return $result;
             }
-
         } catch (Exception $e) {
             // Mark as failed
             $this->db->where('id', $queue_id);
@@ -183,18 +181,18 @@ class Webhook extends CI_Controller
     private function process_event($payload)
     {
         $event_type = $payload['event'] ?? '';
-        
+
         switch ($event_type) {
             case 'PAYMENT_RECEIVED':
             case 'PAYMENT_CONFIRMED':
                 return $this->process_payment_received($payload);
-                
+
             case 'PAYMENT_OVERDUE':
                 return $this->process_payment_overdue($payload);
-                
+
             case 'PAYMENT_DELETED':
                 return $this->process_payment_deleted($payload);
-                
+
             default:
                 return [
                     'success' => true,
@@ -251,9 +249,27 @@ class Webhook extends CI_Controller
             // Disparar hook customizado após pagamento
             if (function_exists('hooks')) {
                 hooks()->do_action('after_chargemanager_charge_paid', $updated_charge);
-                // Se for cobrança de entrada, dispara hook específico
+                // Se for cobrança de entrada, dispara hook específico com contract_id
                 if (!empty($updated_charge->is_entry_charge) && intval($updated_charge->is_entry_charge) === 1) {
-                    hooks()->do_action('after_chargemanager_entry_charge_paid', $updated_charge);
+                    // Buscar contract_id através do billing_group
+                    $contract_id = null;
+                    if (!empty($updated_charge->billing_group_id)) {
+                        $this->db->select('contract_id');
+                        $this->db->where('id', $updated_charge->billing_group_id);
+                        $billing_group = $this->db->get(db_prefix() . 'chargemanager_billing_groups')->row();
+                        if ($billing_group && !empty($billing_group->contract_id)) {
+                            $contract_id = $billing_group->contract_id;
+                        }
+                    }
+
+                    // Disparar hook com charge_id e contract_id
+                    hooks()->do_action('after_chargemanager_entry_charge_paid', [
+                        'charge_id' => $updated_charge->id,
+                        'contract_id' => $contract_id,
+                        'charge' => $updated_charge
+                    ]);
+
+                    log_activity('Hook Disparado: after_chargemanager_entry_charge_paid');
                 }
             }
 
@@ -271,7 +287,6 @@ class Webhook extends CI_Controller
                 'success' => true,
                 'message' => 'Payment processed successfully'
             ];
-
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -322,15 +337,15 @@ class Webhook extends CI_Controller
             // Update related invoice status if exists
             if (!empty($charge->perfex_invoice_id)) {
                 $this->load->model('invoices_model');
-                
+
                 // Get current invoice to validate
                 $invoice = $this->invoices_model->get($charge->perfex_invoice_id);
-                
+
                 if ($invoice && $invoice->status != 2) { // Only update if not already paid (status 2)
                     // Update invoice status to overdue (status 4)
                     $this->db->where('id', $charge->perfex_invoice_id);
                     $this->db->update(db_prefix() . 'invoices', ['status' => 4]);
-                    
+
                     log_activity('ChargeManager: Invoice #' . $charge->perfex_invoice_id . ' status updated to overdue due to charge #' . $charge->id);
                 }
             }
@@ -339,7 +354,6 @@ class Webhook extends CI_Controller
                 'success' => true,
                 'message' => 'Payment marked as overdue'
             ];
-
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -388,7 +402,6 @@ class Webhook extends CI_Controller
                 'success' => true,
                 'message' => 'Payment cancelled'
             ];
-
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -410,10 +423,10 @@ class Webhook extends CI_Controller
         // Load required models
         $this->load->model('invoices_model');
         $this->load->model('payments_model');
-        
+
         // Get invoice to validate
         $invoice = $this->invoices_model->get($charge->perfex_invoice_id);
-        
+
         if (!$invoice) {
             log_activity('ChargeManager Warning: Invoice not found for payment record - Invoice ID: ' . $charge->perfex_invoice_id);
             return false;
@@ -450,7 +463,7 @@ class Webhook extends CI_Controller
             ]);
 
             log_activity('ChargeManager: Payment record #' . $payment_id . ' created for charge #' . $charge->id . ' (Invoice #' . $charge->perfex_invoice_id . ')');
-            
+
             return $payment_id;
         } else {
             log_activity('ChargeManager Error: Failed to create payment record for charge #' . $charge->id);
@@ -465,21 +478,21 @@ class Webhook extends CI_Controller
     {
         // Garantir que os payment modes existem
         $this->chargemanager_model->ensure_payment_modes_exist();
-        
+
         // Usar o método do modelo para buscar dinamicamente
         $payment_mode_id = $this->chargemanager_model->get_payment_mode_id_for_billing_type($billing_type);
-        
+
         if ($payment_mode_id) {
             return $payment_mode_id;
         }
-        
+
         // Log de aviso se não encontrou payment mode adequado
         log_activity('ChargeManager Warning: Payment mode not found for billing type: ' . $billing_type . ', using fallback');
-        
+
         // Fallback para o primeiro payment mode ativo encontrado
         $this->db->where('active', 1);
         $fallback = $this->db->get(db_prefix() . 'payment_modes')->row();
-        
+
         return $fallback ? $fallback->id : 1;
     }
 
@@ -493,4 +506,6 @@ class Webhook extends CI_Controller
         echo json_encode($data);
         die();
     }
-} 
+
+
+}
