@@ -2,7 +2,7 @@
 
 defined('BASEPATH') or exit('No direct script access allowed');
 
-class Webhook extends CI_Controller
+class Webhook extends App_Controller
 {
     const TOKEN_HEADER = 'X-Webhook-Token';
 
@@ -249,6 +249,7 @@ class Webhook extends CI_Controller
             // Disparar hook customizado após pagamento
             if (function_exists('hooks')) {
                 hooks()->do_action('after_chargemanager_charge_paid', $updated_charge);
+                
                 // Se for cobrança de entrada, dispara hook específico com contract_id
                 if (!empty($updated_charge->is_entry_charge) && intval($updated_charge->is_entry_charge) === 1) {
                     // Buscar contract_id através do billing_group
@@ -269,7 +270,7 @@ class Webhook extends CI_Controller
                         'charge' => $updated_charge
                     ]);
 
-                    log_activity('Hook Disparado: after_chargemanager_entry_charge_paid');
+                    log_activity('ChargeManager Webhook: Hook after_chargemanager_entry_charge_paid executado - Charge ID: ' . $updated_charge->id . ', Contract ID: ' . $contract_id);
                 }
             }
 
@@ -506,6 +507,4 @@ class Webhook extends CI_Controller
         echo json_encode($data);
         die();
     }
-
-
 }
