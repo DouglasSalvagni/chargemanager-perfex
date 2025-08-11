@@ -27,7 +27,7 @@ class Asaas_gateway implements Gateway_interface
         }
         
         $this->base_url = $this->environment === 'production' 
-            ? 'https://www.asaas.com/api/v3'
+            ? 'https://api.asaas.com/v3'
             : 'https://sandbox.asaas.com/api/v3';
     }
 
