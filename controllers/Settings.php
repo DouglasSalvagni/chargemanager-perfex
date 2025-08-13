@@ -27,26 +27,26 @@ class Settings extends AdminController
 
         // Load current settings
         $settings = $this->get_current_settings();
-        
+
         // Pass individual variables that the view expects
         $data['asaas_api_key'] = $settings['api_key'] ?? '';
         $data['asaas_environment'] = $settings['environment'] ?? 'sandbox';
         $data['webhook_token'] = $settings['webhook_token'] ?? '';
         $data['enabled'] = $settings['enabled'] ?? false;
-        
+
         // Additional settings that the view expects
         $data['auto_sync_clients'] = $this->chargemanager_model->get_asaas_setting('auto_sync_clients') ?? '0';
         $data['auto_create_invoices'] = $this->chargemanager_model->get_asaas_setting('auto_create_invoices') ?? '0';
         $data['debug_mode'] = $this->chargemanager_model->get_asaas_setting('debug_mode') ?? '0';
         $data['default_billing_type'] = $this->chargemanager_model->get_asaas_setting('default_billing_type') ?? 'BOLETO';
-        
+
         // Get recent logs for the view
         $data['recent_logs'] = $this->chargemanager_model->get_sync_logs([], 10);
-        
+
         // Keep the settings array for backward compatibility
         $data['settings'] = $settings;
         $data['title'] = _l('chargemanager_settings');
-        
+
         $this->load->view('admin/settings/index', $data);
     }
 
@@ -74,7 +74,7 @@ class Settings extends AdminController
             // Validate API key if provided
             if (!empty($settings['api_key'])) {
                 $validation_result = $this->validate_api_key($settings['api_key'], $settings['environment']);
-                
+
                 if (!$validation_result['success']) {
                     set_alert('danger', $validation_result['message']);
                     redirect(admin_url('chargemanager/settings'));
@@ -95,7 +95,6 @@ class Settings extends AdminController
 
             set_alert('success', _l('chargemanager_settings_saved_successfully'));
             log_activity('ChargeManager: Settings updated');
-
         } catch (Exception $e) {
             log_activity('ChargeManager Error: ' . $e->getMessage());
             set_alert('danger', _l('chargemanager_error_saving_settings') . ': ' . $e->getMessage());
@@ -120,7 +119,7 @@ class Settings extends AdminController
 
         try {
             $settings = $this->get_current_settings();
-            
+
             if (empty($settings['api_key'])) {
                 echo json_encode([
                     'success' => false,
@@ -130,9 +129,8 @@ class Settings extends AdminController
             }
 
             $validation_result = $this->validate_api_key($settings['api_key'], $settings['environment']);
-            
-            echo json_encode($validation_result);
 
+            echo json_encode($validation_result);
         } catch (Exception $e) {
             log_activity('ChargeManager Error: ' . $e->getMessage());
             echo json_encode([
@@ -175,12 +173,11 @@ class Settings extends AdminController
         try {
             // Load Gateway Manager to test connection
             $this->load->library('chargemanager/Gateway_manager');
-            
+
             // Test the API key by attempting to retrieve account info
             $result = $this->gateway_manager->test_connection($api_key, $environment);
-            
-            return $result;
 
+            return $result;
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -199,7 +196,7 @@ class Settings extends AdminController
         }
 
         $webhook_url = base_url('chargemanager/webhook/handle');
-        
+
         echo json_encode([
             'success' => true,
             'webhook_url' => $webhook_url
@@ -223,14 +220,13 @@ class Settings extends AdminController
         try {
             // Clear sync logs
             $this->chargemanager_model->clean_old_sync_logs(0); // 0 days = clear all
-            
+
             log_activity('ChargeManager: All logs cleared');
-            
+
             echo json_encode([
                 'success' => true,
                 'message' => _l('chargemanager_logs_cleared_successfully')
             ]);
-
         } catch (Exception $e) {
             log_activity('ChargeManager Error: ' . $e->getMessage());
             echo json_encode([
@@ -239,4 +235,4 @@ class Settings extends AdminController
             ]);
         }
     }
-} 
+}

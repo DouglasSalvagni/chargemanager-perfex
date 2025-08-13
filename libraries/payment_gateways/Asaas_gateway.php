@@ -12,12 +12,12 @@ class Asaas_gateway implements Gateway_interface
     private $api_key;
     private $environment;
     private $base_url;
-    
+
     public function __construct($custom_config = null)
     {
         $this->CI = &get_instance();
         $this->CI->load->model('chargemanager_model');
-        
+
         if ($custom_config) {
             $this->api_key = $custom_config['api_key'];
             $this->environment = $custom_config['environment'];
@@ -25,8 +25,8 @@ class Asaas_gateway implements Gateway_interface
             $this->api_key = $this->CI->chargemanager_model->get_asaas_setting('api_key');
             $this->environment = $this->CI->chargemanager_model->get_asaas_setting('environment') ?: 'sandbox';
         }
-        
-        $this->base_url = $this->environment === 'production' 
+
+        $this->base_url = $this->environment === 'production'
             ? 'https://api.asaas.com/v3'
             : 'https://sandbox.asaas.com/api/v3';
     }
@@ -39,7 +39,7 @@ class Asaas_gateway implements Gateway_interface
     {
         try {
             $response = $this->make_request('GET', '/myAccount');
-            
+
             if ($response['success']) {
                 return [
                     'success' => true,
@@ -47,12 +47,11 @@ class Asaas_gateway implements Gateway_interface
                     'account_info' => $response['data']
                 ];
             }
-            
+
             return [
                 'success' => false,
                 'message' => 'Falha na conexão: ' . $response['message']
             ];
-            
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -162,7 +161,6 @@ class Asaas_gateway implements Gateway_interface
                 'success' => false,
                 'message' => $response['message']
             ];
-
         } catch (Exception $e) {
             log_activity('ChargeManager: Exception creating ASAAS customer: ' . $e->getMessage());
             return [
@@ -251,7 +249,6 @@ class Asaas_gateway implements Gateway_interface
                 'success' => false,
                 'message' => $response['message']
             ];
-
         } catch (Exception $e) {
             log_activity('ChargeManager: Exception updating ASAAS customer ' . $customer_id . ': ' . $e->getMessage());
             return [
@@ -282,7 +279,6 @@ class Asaas_gateway implements Gateway_interface
                 'success' => false,
                 'message' => $response['message']
             ];
-
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -312,7 +308,6 @@ class Asaas_gateway implements Gateway_interface
                 'success' => false,
                 'message' => $response['message']
             ];
-
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -342,11 +337,11 @@ class Asaas_gateway implements Gateway_interface
             if (isset($charge_data['discount'])) {
                 $payload['discount'] = $charge_data['discount'];
             }
-            
+
             if (isset($charge_data['fine'])) {
                 $payload['fine'] = $charge_data['fine'];
             }
-            
+
             if (isset($charge_data['interest'])) {
                 $payload['interest'] = $charge_data['interest'];
             }
@@ -361,13 +356,13 @@ class Asaas_gateway implements Gateway_interface
 
             if ($response['success']) {
                 $data = $response['data'];
-                
+
                 // Melhorar tratamento do PIX QR Code
                 $pix_code = null;
                 if (isset($data['pixTransaction']) && isset($data['pixTransaction']['qrCode'])) {
                     $pix_code = $data['pixTransaction']['qrCode']['payload'] ?? null;
                 }
-                
+
                 return [
                     'success' => true,
                     'charge_id' => $data['id'],
@@ -383,7 +378,6 @@ class Asaas_gateway implements Gateway_interface
                 'success' => false,
                 'message' => $response['message']
             ];
-
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -413,7 +407,6 @@ class Asaas_gateway implements Gateway_interface
                 'success' => false,
                 'message' => $response['message']
             ];
-
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -443,7 +436,6 @@ class Asaas_gateway implements Gateway_interface
                 'success' => false,
                 'message' => $response['message']
             ];
-
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -474,7 +466,6 @@ class Asaas_gateway implements Gateway_interface
                 'success' => false,
                 'message' => $response['message']
             ];
-
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -512,7 +503,6 @@ class Asaas_gateway implements Gateway_interface
                 'event_type' => $payload['event'],
                 'payment_id' => $payload['payment']['id']
             ];
-
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -531,12 +521,12 @@ class Asaas_gateway implements Gateway_interface
     private function make_request($method, $endpoint, $data = null)
     {
         $url = $this->base_url . $endpoint;
-        
+
         // Log the full request for debugging
         log_activity("ChargeManager: Making {$method} request to {$url}" . ($data ? ' with data: ' . json_encode($data) : ''));
-        
+
         $curl = curl_init();
-        
+
         curl_setopt_array($curl, [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
@@ -545,39 +535,40 @@ class Asaas_gateway implements Gateway_interface
             CURLOPT_HTTPHEADER => [
                 'Accept: application/json',
                 'Content-Type: application/json',
+                'User-Agent: Wizer CRM',
                 'access_token: ' . $this->api_key
             ],
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_SSL_VERIFYHOST => false
         ]);
-        
+
         if ($data && in_array($method, ['POST', 'PUT', 'PATCH'])) {
             curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
         }
-        
+
         $response = curl_exec($curl);
         $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
         $error = curl_error($curl);
-        
+
         curl_close($curl);
-        
+
         // Log response for debugging
         log_activity("ChargeManager: ASAAS API response - HTTP {$http_code}: " . substr($response, 0, 500) . (strlen($response) > 500 ? '...' : ''));
-        
+
         if ($error) {
             log_activity("ChargeManager: CURL Error: {$error}");
             throw new Exception('CURL Error: ' . $error);
         }
-        
+
         $decoded_response = json_decode($response, true);
-        
+
         if ($http_code >= 200 && $http_code < 300) {
             return [
                 'success' => true,
                 'data' => $decoded_response
             ];
         }
-        
+
         // Detailed error handling for ASAAS API
         $error_message = 'HTTP ' . $http_code;
         if (isset($decoded_response['errors']) && is_array($decoded_response['errors'])) {
@@ -595,9 +586,9 @@ class Asaas_gateway implements Gateway_interface
         } elseif (isset($decoded_response['message'])) {
             $error_message .= ': ' . $decoded_response['message'];
         }
-        
+
         log_activity("ChargeManager: ASAAS API Error - {$error_message}");
-        
+
         return [
             'success' => false,
             'message' => $error_message,
@@ -644,4 +635,4 @@ class Asaas_gateway implements Gateway_interface
         }
         return preg_replace('/[^0-9]/', '', $postal_code);
     }
-} 
+}
