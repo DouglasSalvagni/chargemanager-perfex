@@ -82,6 +82,38 @@ function add_contract_billing_schema_fields($contract = null)
         $is_contract_signed = ($contract->signed == 1) || ($contract->marked_as_signed == 1);
     }
 
+    // Verificar se o cliente tem VAT (CPF/CNPJ) preenchido
+    $client_has_vat = false;
+    $client_id = null;
+    
+    // Obter ID do cliente
+    if ($contract && $contract->client) {
+        // Contrato existente
+        $client_id = $contract->client;
+    } elseif (isset($_GET['customer_id']) && is_numeric($_GET['customer_id'])) {
+        // Novo contrato - obter da URL
+        $client_id = $_GET['customer_id'];
+    }
+    
+    if ($client_id) {
+        // Buscar dados do cliente
+        $CI->db->where('userid', $client_id);
+        $client = $CI->db->get(db_prefix() . 'clients')->row();
+        
+        if ($client && !empty($client->vat)) {
+            $client_has_vat = true;
+        }
+    }
+
+    // Determinar se a área deve ser congelada
+    $is_frozen = $is_contract_signed || !$client_has_vat;
+    $freeze_reason = '';
+    if ($is_contract_signed) {
+        $freeze_reason = 'contract_signed';
+    } elseif (!$client_has_vat) {
+        $freeze_reason = 'missing_vat';
+    }
+
     // Carregar schema existente se estiver editando um contrato
     $schema = null;
     if ($contract_id) {
@@ -167,15 +199,21 @@ function add_contract_billing_schema_fields($contract = null)
     </style>';
 
     // Início do container principal
-    echo '<div class="billing-schema-container' . ($is_contract_signed ? ' frozen' : '') . '">';
+    echo '<div class="billing-schema-container' . ($is_frozen ? ' frozen' : '') . '">';
     echo '<h4 class="font-medium text-muted">Configuração de Cobranças</h4>';
     echo '<hr class="hr-panel-separator" />';
 
-    // Mostrar aviso se o contrato estiver assinado
-    if ($is_contract_signed) {
+    // Mostrar aviso se a área estiver congelada
+    if ($is_frozen) {
         echo '<div class="frozen-notice">';
         echo '<i class="fa fa-lock"></i>';
-        echo '<strong>Contrato Assinado:</strong> A configuração de cobranças não pode ser editada pois o contrato já foi assinado.';
+        
+        if ($freeze_reason === 'contract_signed') {
+            echo '<strong>Contrato Assinado:</strong> A configuração de cobranças não pode ser editada pois o contrato já foi assinado.';
+        } elseif ($freeze_reason === 'missing_vat') {
+            echo '<strong>CPF/CNPJ Obrigatório:</strong> O CPF ou CNPJ do cliente deve ser preenchido para que o plano de cobranças possa ser gerado.';
+        }
+        
         echo '</div>';
     }
 
@@ -374,19 +412,43 @@ function contract_billing_schema_js()
 {
     // Obter informações do contrato se estivermos na página de edição
     $is_contract_signed = false;
+    $client_has_vat = false;
+    $is_frozen = false;
+    
+    $CI = &get_instance();
+    $client_id = null;
+    
     if (isset($_GET['id']) && is_numeric($_GET['id'])) {
-        $CI = &get_instance();
+        // Editando contrato existente
         $CI->db->where('id', $_GET['id']);
         $contract = $CI->db->get(db_prefix() . 'contracts')->row();
         
         if ($contract) {
             $is_contract_signed = ($contract->signed == 1 || $contract->marked_as_signed == 1);
+            $client_id = $contract->client;
+        }
+    } elseif (isset($_GET['customer_id']) && is_numeric($_GET['customer_id'])) {
+        // Criando novo contrato
+        $client_id = $_GET['customer_id'];
+    }
+    
+    // Verificar VAT do cliente
+    if ($client_id) {
+        $CI->db->where('userid', $client_id);
+        $client = $CI->db->get(db_prefix() . 'clients')->row();
+        
+        if ($client && !empty($client->vat)) {
+            $client_has_vat = true;
         }
     }
+    
+    $is_frozen = $is_contract_signed || !$client_has_vat;
     
     echo '<script>';
     echo 'window.contractBillingConfig = window.contractBillingConfig || {};';
     echo 'window.contractBillingConfig.isContractSigned = ' . ($is_contract_signed ? 'true' : 'false') . ';';
+    echo 'window.contractBillingConfig.clientHasVat = ' . ($client_has_vat ? 'true' : 'false') . ';';
+    echo 'window.contractBillingConfig.isFrozen = ' . ($is_frozen ? 'true' : 'false') . ';';
     echo '</script>';
     echo '<script src="' . module_dir_url('chargemanager', 'assets/js/contract_billing_schema.js') . '"></script>';
 }
