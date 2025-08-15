@@ -6,9 +6,9 @@
 $(document).ready(function () {
     'use strict';
 
-    // Verificar se a área está congelada (contrato assinado ou cliente sem VAT)
-    if (window.contractBillingConfig && window.contractBillingConfig.isFrozen) {
-        // Se a área estiver congelada, não inicializar funcionalidades
+    // Verificar se o contrato está assinado
+    if (window.contractBillingConfig && window.contractBillingConfig.isContractSigned) {
+        // Se o contrato estiver assinado, não inicializar funcionalidades
         return;
     }
 
