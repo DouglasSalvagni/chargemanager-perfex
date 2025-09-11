@@ -249,7 +249,7 @@ class Webhook extends App_Controller
             // Disparar hook customizado após pagamento
             if (function_exists('hooks')) {
                 hooks()->do_action('after_chargemanager_charge_paid', $updated_charge);
-                
+
                 // Se for cobrança de entrada, dispara hook específico com contract_id
                 if (!empty($updated_charge->is_entry_charge) && intval($updated_charge->is_entry_charge) === 1) {
                     // Buscar contract_id através do billing_group
@@ -399,9 +399,56 @@ class Webhook extends App_Controller
                 'updated_at' => date('Y-m-d H:i:s')
             ]);
 
+            // Cancel related invoice if exists (consistent with system cancellation)
+            if (!empty($charge->perfex_invoice_id)) {
+                try {
+                    $this->load->model('invoices_model');
+                    $invoice = $this->invoices_model->get($charge->perfex_invoice_id);
+
+                    if ($invoice && $invoice->status != 2) { // Not paid
+                        // Mark invoice as cancelled using the correct status
+                        $this->db->where('id', $charge->perfex_invoice_id);
+                        $invoice_updated = $this->db->update(db_prefix() . 'invoices', [
+                            'status' => 5 // Cancelled status
+                        ]);
+
+                        if ($invoice_updated) {
+                            log_activity('ChargeManager: Invoice #' . $charge->perfex_invoice_id . ' cancelled due to ASAAS charge cancellation for charge #' . $charge->id);
+                        } else {
+                            log_activity('ChargeManager Warning: Failed to cancel invoice #' . $charge->perfex_invoice_id . ' for charge #' . $charge->id);
+                        }
+                    }
+                } catch (Exception $invoice_exception) {
+                    // Log invoice cancellation error but don't fail the charge cancellation
+                    log_activity('ChargeManager Warning: Error cancelling invoice #' . $charge->perfex_invoice_id . ': ' . $invoice_exception->getMessage());
+                }
+            }
+
+            // Update billing group total amount and status
+            if (!empty($charge->billing_group_id)) {
+                try {
+                    // Update billing group total amount
+                    $this->db->set('total_amount', 'total_amount - ' . floatval($charge->value), false);
+                    $this->db->set('updated_at', date('Y-m-d H:i:s'));
+                    $this->db->where('id', $charge->billing_group_id);
+                    $billing_group_updated = $this->db->update(db_prefix() . 'chargemanager_billing_groups');
+
+                    if (!$billing_group_updated) {
+                        log_activity('ChargeManager Warning: Failed to update billing group total for group #' . $charge->billing_group_id);
+                    }
+
+                    // Update billing group status
+                    $this->chargemanager_model->refresh_billing_group_status($charge->billing_group_id);
+                } catch (Exception $billing_group_exception) {
+                    log_activity('ChargeManager Warning: Error updating billing group #' . $charge->billing_group_id . ': ' . $billing_group_exception->getMessage());
+                }
+            }
+
+            log_activity('ChargeManager: Charge #' . $charge->id . ' cancelled via ASAAS webhook');
+
             return [
                 'success' => true,
-                'message' => 'Payment cancelled'
+                'message' => 'Payment cancelled and related data updated'
             ];
         } catch (Exception $e) {
             return [
