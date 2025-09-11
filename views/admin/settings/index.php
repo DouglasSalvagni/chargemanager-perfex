@@ -64,7 +64,7 @@
                                     </label>
                                     <div class="input-group">
                                         <input type="text" id="webhook_url" class="form-control"
-                                            value="<?php echo site_url('chargemanager/webhook'); ?>" readonly>
+                                            value="<?php echo site_url('chargemanager/webhook/handle'); ?>" readonly>
                                         <span class="input-group-btn">
                                             <button type="button" class="btn btn-default" onclick="copyToClipboard('webhook_url')">
                                                 <i class="fa fa-copy"></i>
