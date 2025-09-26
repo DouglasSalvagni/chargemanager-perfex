@@ -268,7 +268,7 @@ function add_contract_billing_schema_fields($contract = null)
     echo '<div class="col-md-6">';
     echo '<div class="form-group">';
     echo '<label for="first_installment_date" class="control-label">Data da 1ª Parcela</label>';
-    echo '<input type="date" name="first_installment_date" id="first_installment_date" class="form-control" value="' . $first_installment_date . '">';
+    echo '<input type="date" name="first_installment_date" id="first_installment_date" class="form-control" value="' . $first_installment_date . '" min="' . date('Y-m-d') . '">';
     echo '</div>';
     echo '</div>';
 
