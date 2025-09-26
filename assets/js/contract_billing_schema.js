@@ -105,6 +105,32 @@ $(document).ready(function () {
         generateAutoSchema(frequency, installmentValue, firstInstallmentDate);
     });
 
+    // Calcular data mensal mantendo o mesmo dia
+    function calculateMonthlyDate(baseDate, monthsToAdd) {
+        var targetDate = new Date(baseDate);
+        var originalDay = baseDate.getDate();
+        
+        // Adicionar os meses
+        targetDate.setMonth(baseDate.getMonth() + monthsToAdd);
+        
+        // Verificar se o dia mudou (acontece quando o dia não existe no mês de destino)
+        if (targetDate.getDate() !== originalDay) {
+            // Se mudou, significa que o dia não existe no mês de destino
+            // Vamos para o último dia do mês anterior
+            targetDate.setDate(0);
+        }
+        
+        // Verificar se caiu em final de semana e ajustar se necessário
+        var dayOfWeek = targetDate.getDay();
+        if (dayOfWeek === 0) { // Domingo
+            targetDate.setDate(targetDate.getDate() + 1); // Move para segunda
+        } else if (dayOfWeek === 6) { // Sábado
+            targetDate.setDate(targetDate.getDate() + 2); // Move para segunda
+        }
+        
+        return targetDate;
+    }
+
     // Gerar schema automático
     function generateAutoSchema(frequency, installmentValue, firstInstallmentDate) {
         if (contractValue <= 0 || installmentValue <= 0) {
@@ -142,7 +168,7 @@ $(document).ready(function () {
                         dueDate.setDate(baseDate.getDate() + (14 * i));
                         break;
                     case "monthly":
-                        dueDate.setMonth(baseDate.getMonth() + i);
+                        dueDate = calculateMonthlyDate(baseDate, i);
                         break;
                 }
             }
