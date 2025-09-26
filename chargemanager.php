@@ -222,3 +222,12 @@ function chargemanager_after_payment_added($payment_id)
         log_activity('ChargeManager: Failed to link payment to charges - ' . $e->getMessage());
     }
 }
+
+
+hooks()->add_action('app_init', 'contract_table_filters');
+
+function contract_table_filters()
+{
+    $CI = &get_instance();
+    // require_once(__DIR__ . '/contract-table-filters.php');
+}

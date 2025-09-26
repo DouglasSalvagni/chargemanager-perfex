@@ -6,6 +6,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 $lang['chargemanager'] = 'ChargeManager';
 $lang['chargemanager_settings'] = 'Configurações do ChargeManager';
 $lang['chargemanager_billing_groups'] = 'Grupos de Cobrança';
+$lang['chargemanager_billing_status'] = 'Status de Cobrança';
 
 // Menu
 $lang['chargemanager_menu_settings'] = 'ChargeManager - Configurações';
@@ -311,4 +312,4 @@ $lang['chargemanager_editable_statuses'] = 'Status Editáveis';
 $lang['chargemanager_editable_statuses_desc'] = 'Todos os status exceto "Concluído" (valor exato) e "Cancelado" podem ser editados';
 $lang['chargemanager_non_editable_statuses'] = 'Status Não Editáveis';
 $lang['chargemanager_non_editable_statuses_desc'] = 'Apenas "Concluído" (valor exato) e "Cancelado" não podem ser editados';
-$lang['chargemanager_copied_to_clipboard'] = 'Copiado para a área de transferência'; 
+$lang['chargemanager_copied_to_clipboard'] = 'Copiado para a área de transferência';
