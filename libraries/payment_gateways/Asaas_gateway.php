@@ -338,12 +338,23 @@ class Asaas_gateway implements Gateway_interface
                 $payload['discount'] = $charge_data['discount'];
             }
 
-            if (isset($charge_data['fine'])) {
-                $payload['fine'] = $charge_data['fine'];
-            }
-
+            // Aplicar juros padrão de 1% ao mês se não fornecido
             if (isset($charge_data['interest'])) {
                 $payload['interest'] = $charge_data['interest'];
+            } else {
+                $payload['interest'] = [
+                    'value' => 1
+                ];
+            }
+
+            // Aplicar multa padrão de 10% se não fornecida
+            if (isset($charge_data['fine'])) {
+                $payload['fine'] = $charge_data['fine'];
+            } else {
+                $payload['fine'] = [
+                    'value' => 10,
+                    'type' => 'PERCENTAGE'
+                ];
             }
 
             if (isset($charge_data['installmentCount'])) {
